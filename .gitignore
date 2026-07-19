@@ -3,6 +3,10 @@
 # Project Input and Output
 ##########################
 
+# Claude AI files
+.claude/
+claude.md
+
 # Exclude _data folder, since it should all be pulled automatically (unless in the manual folder)
 /_data/*
 
