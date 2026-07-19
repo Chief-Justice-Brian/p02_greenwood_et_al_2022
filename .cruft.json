@@ -1,0 +1,43 @@
+{
+  "template": "https://github.com/backofficedev/cookiecutter_chartbook",
+  "commit": "038010fa2e6d420f0697d433e31259593fea1e11",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "project_name": "p02_greenwood_et_al_2022",
+      "project_slug": "p02_greenwood_et_al_2022",
+      "project_description": "Replication of Predictable Financial Crises FINM-32900",
+      "author_name": "Brian Nguyen & Clara Duan",
+      "author_email": "briannguyen@uchicago.edu",
+      "python_version": "3.12",
+      "environment_manager": "conda",
+      "include_latex_reports": true,
+      "include_jupyter_notebooks": true,
+      "include_r_scripts": false,
+      "include_stata_scripts": false,
+      "include_chartbook": true,
+      "include_github_actions": true,
+      "include_fred": true,
+      "include_fed_yield_curve": true,
+      "include_ofr_api": true,
+      "include_bloomberg": false,
+      "include_crsp_stock": true,
+      "include_crsp_compustat": true,
+      "_copy_without_render": [
+        "*.bst",
+        "*.sty",
+        "*.eps",
+        "*.ipe",
+        "*.png",
+        "*.pdf",
+        "*.tex",
+        "*.bib",
+        ".github/workflows/*.yml",
+        ".claude/skills/*/*.md"
+      ],
+      "_template": "https://github.com/backofficedev/cookiecutter_chartbook",
+      "_commit": "038010fa2e6d420f0697d433e31259593fea1e11"
+    }
+  },
+  "directory": null
+}
