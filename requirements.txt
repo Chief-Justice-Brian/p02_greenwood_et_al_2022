@@ -43,9 +43,3 @@ notebook
 # Documentation/notebook rendering dependencies
 chartbook[all]>=0.0.14
 
-
-# WRDS data access
-wrds>=3.2.0
-jaydebeapi
-
-
