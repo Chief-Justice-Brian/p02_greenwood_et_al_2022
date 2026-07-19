@@ -131,25 +131,18 @@ else:
     defaults["OS_TYPE"] = get_os()
 
 
-## Stata executable
-def get_stata_exe():
-    """Get the name of the Stata executable based on the OS type."""
-    if defaults["OS_TYPE"] == "windows":
-        return "StataMP-64.exe"
-    elif defaults["OS_TYPE"] == "nix":
-        return "stata-mp"
-    else:
-        raise ValueError("Unknown OS type")
-
-
-if "STATA_EXE" in cli_vars:
-    defaults["STATA_EXE"] = cli_vars["STATA_EXE"]
-else:
-    defaults["STATA_EXE"] = get_stata_exe()
-
 ## Dates
-defaults["START_DATE"] = datetime.strptime("1913-01-01", "%Y-%m-%d")
-defaults["END_DATE"] = datetime.strptime("2024-12-31", "%Y-%m-%d")
+# Full panel window: the paper's sample starts in 1950; END_DATE extends
+# through the present for the updated-numbers requirement (R-Zone Monitor).
+defaults["START_DATE"] = datetime.strptime("1950-01-01", "%Y-%m-%d")
+defaults["END_DATE"] = datetime.strptime("2026-06-30", "%Y-%m-%d")
+
+# Replication sample bounds (Greenwood-Hanson-Shleifer-Sorensen 2022 use
+# 1950-2016). Quantile cutoffs for the replication exhibits are computed on
+# this window ONLY, so that post-2016 data can never silently move the
+# historical cutoffs.
+defaults["PAPER_SAMPLE_START"] = 1950
+defaults["PAPER_SAMPLE_END"] = 2016
 
 
 ## File paths

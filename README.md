@@ -1,167 +1,100 @@
-p02_greenwood_et_al_2022
-========================
+# Predictable Financial Crises
 
-## About this project
+FINM 32900 Final Project · Brian Nguyen & Clara Duan
 
-Replication of Predictable Financial Crises FINM-32900
+Replication and extension of **Greenwood, Hanson, Shleifer & Sørensen,
+"Predictable Financial Crises," Journal of Finance 77(2), 2022** (working paper
+version: HBS 20-130, which sets our table/figure numbering).
+
+The paper shows that when 3-year credit growth and 3-year asset price growth
+are *jointly* elevated (the "R-zone"), the probability of a financial crisis
+within 3 years rises from ~7% to ~40%. We attempt to:
+
+1. **Replicate** the assigned exhibits (Tables 1, 3, 4; Figures 1, 3) on a
+   panel of 42 countries, 1950–2016, built entirely from free public sources.
+2. **Extend** every exhibit through the present - create a re-runnable
+   product, a **R-Zone** tracker, plus a new country-by-year classification
+   table (2017–present, with distance to the threshold(s)) and a US timeline figure.
+3. **Examine** the new out of sample data: was the warning light on in
+   2020–2022, before the March 2023 banking stress? And does the dynamic
+   (local projection) specification the paper asserts in footnote 10 beat the
+   static baseline on AUC (memory specific model).
 
 ## Quick Start
 
-The quickest way to run code in this repo is to use the following steps.
+Create and activate the conda environment, then let `doit` run everything:
 
-You must have TexLive (or another LaTeX distribution) installed on your computer and available in your path.
-You can do this by downloading and installing it from here ([windows](https://tug.org/texlive/windows.html#install)
-and [mac](https://tug.org/mactex/mactex-download.html) installers).
-
-
-First, you must have the `conda` package manager installed (e.g., via Anaconda). However, I recommend using `mamba`, via [miniforge](https://github.com/conda-forge/miniforge) as it is faster and more lightweight than `conda`.
-
-Create and activate the conda environment:
 ```bash
 conda env create -f environment.yml
 conda activate p02_greenwood_et_al_2022
-```
-
-Finally, run the project tasks:
-```bash
 doit
 ```
-And that's it!
 
+No API keys or credentials are needed: every data source is free and pulled by
+script (see below). An optional `.env` can override defaults — see
+`.env.example`.
 
-### Other commands
-
-#### Unit Tests and Doc Tests
-
-You can run the unit test, including doctests, with the following command:
-```
-pytest --doctest-modules
-```
-
-You can build the documentation with:
-```
-rm ./src/.pytest_cache/README.md
-jupyter-book build -W ./
-```
-Use `del` instead of rm on Windows
-
-
-#### Setting Environment Variables
-
-You can [export your environment variables](https://stackoverflow.com/questions/43267413/how-to-set-environment-variables-from-env-file)
-from your `.env` files like so, if you wish. This can be done easily in a Linux or Mac terminal with the following command:
-```bash
-set -a  # automatically export all variables
-source .env
-set +a
-```
-On Windows (PowerShell):
-```powershell
-Get-Content .env | ForEach-Object { if ($_ -match '^([^=]+)=(.*)$') { [Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process') } }
-```
-
-### Formatting
-
-This project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formatting Python code.
+Run the unit tests alone with:
 
 ```bash
-# Auto-fix linting issues (e.g., unused imports, undefined names)
-ruff check . --fix
+pytest
+```
 
-# Format code (consistent style, spacing, line length)
-ruff format .
+## Data Sources
 
-# Sort imports, then fix linting issues, then format
+With one exception, every source in our pipeline is one the paper itself
+used. In the authors' own words (pp. 7–8):
+
+> "The International Monetary Fund's (IMF) Global Debt Database (Mbaye,
+> Moreno-Badia, and Chae 2018) provides data on total credit outstanding —
+> including both loans and debt securities — to nonfinancial businesses and
+> households. [...] We supplement the IMF credit data using information from
+> the JST (2017, 2019) MacroHistory database [...] We collect credit data for
+> Thailand from the Bank of International Settlements' (BIS) Total Credit
+> Statistics [...]
+>
+> Data on equity price indices are primarily from Global Financial Data
+> (GFD). **Where suitable data is not available from GFD, we obtain equity
+> price data from the IMF's International Financial Statistics database or
+> the JST MacroHistory database** as augmented by Jordà et al. (2019). Using
+> data on nominal price inflation from the World Bank's World Development
+> Indicators and the MacroHistory database, we compute the inflation-adjusted
+> change in equity prices. We obtain inflation-adjusted home price indices
+> from the BIS Residential Property Price database [...] We again supplement
+> the BIS data on real home prices with data from the JST MacroHistory
+> database and the OECD's Housing Prices database."
+
+Everything named there is free **except** GFD (a paid subscription) and Bloomberg.
+For equities we therefore do exactly what the bolded sentence above
+prescribes when GFD is unavailable — IFS + JST become our primary — and keep
+every other source as the paper used it. The result is, to our knowledge,
+the first end-to-end reconstruction of the paper that runs entirely on free
+public sources.
+
+The one source the paper never used is **OECD share prices**, which we add
+for the post-2016 extension: no forward extension is possible with the
+paper's own equity sources, since GFD and Bloomberg are paywalled and the
+IMF stopped collecting share prices in 2017.
+
+| Source | Role in the paper | Role here | Pull script |
+|---|---|---|---|
+| Baron–Verner–Xiong (2021), Harvard Dataverse | Baseline crisis chronology | Same | `src/pull_bvx_crises.py` |
+| IMF Global Debt Database | Credit: **primary** | Same | `src/pull_imf_gdd.py` |
+| BIS Total Credit Statistics | Credit: used for Thailand | Credit supplement; carries the monitor forward | `src/pull_bis_total_credit.py` |
+| IMF share price indices (former IFS) | Equity: their stated GFD fallback | Equity **primary**, 1950–2016 | `src/pull_imf_equity.py` |
+| JST Macrohistory (R6) | Supplement for credit, equity, house prices, CPI/GDP; JST crisis dates | Same, early-sample fill | `src/pull_jst_macrohistory.py` |
+| OECD share prices | — (our one addition) | Equity 2017–present + countries GFD-only in the paper | `src/pull_oecd_share_prices.py` |
+| BIS Residential Property Prices | House prices: **primary** | Same | `src/pull_bis_property_prices.py` |
+| OECD Analytical House Prices | House prices: supplement (their footnote 7) | Same | `src/pull_oecd_house_prices.py` |
+| World Bank WDI | Inflation + GDP | Same | `src/pull_worldbank_wdi.py` |
+
+Since our non-equity data sources are identical to the original paper (vintages aside), substitution risk is isolated to the equity column. This explains why our only deviation from Table 1 occurs in equity standard deviation (45.7 vs. 48.8)—a expected result given our reliance on alternative paid data sources.
+
+## Formatting
+
+This project uses [Ruff](https://docs.astral.sh/ruff/) for linting and
+formatting:
+
+```bash
 ruff format . && ruff check --select I --fix . && ruff check --fix .
 ```
-
-- `ruff check --fix` applies safe auto-fixes for linting violations
-- `ruff format` formats code similar to Black
-- `--select I` targets only import sorting rules (isort-compatible)
-
-### General Directory Structure
-
- - The `assets` folder is used for things like hand-drawn figures or other
-   pictures that were not generated from code. These things cannot be easily
-   recreated if they are deleted.
-
- - The `_output` folder, on the other hand, contains dataframes and figures that are
-   generated from code. The entire folder should be able to be deleted, because
-   the code can be run again, which would again generate all of the contents.
-
- - The `data_manual` is for data that cannot be easily recreated. This data
-   should be version controlled. Anything in the `_data` folder or in
-   the `_output` folder should be able to be recreated by running the code
-   and can safely be deleted.
-
- - I'm using the `doit` Python module as a task runner. It works like `make` and
-   the associated `Makefile`s. To rerun the code, install `doit`
-   (https://pydoit.org/) and execute the command `doit` from the `src`
-   directory. Note that doit is very flexible and can be used to run code
-   commands from the command prompt, thus making it suitable for projects that
-   use scripts written in multiple different programming languages.
-
- - I'm using the `.env` file as a container for absolute paths that are private
-   to each collaborator in the project. You can also use it for private
-   credentials, if needed. It should not be tracked in Git.
-
-### Data and Output Storage
-
-I'll often use a separate folder for storing data. Any data in the data folder
-can be deleted and recreated by rerunning the PyDoit command (the pulls are in
-the dodo.py file). Any data that cannot be automatically recreated should be
-stored in the "data_manual" folder. Because of the risk of manually-created data
-getting changed or lost, I prefer to keep it under version control if I can.
-Thus, data in the "_data" folder is excluded from Git (see the .gitignore file),
-while the "data_manual" folder is tracked by Git.
-
-Output is stored in the "_output" directory. This includes dataframes, charts, and
-rendered notebooks. When the output is small enough, I'll keep this under
-version control. I like this because I can keep track of how dataframes change as my
-analysis progresses, for example.
-
-Of course, the _data directory and _output directory can be kept elsewhere on the
-machine. To make this easy, I always include the ability to customize these
-locations by defining the path to these directories in environment variables,
-which I intend to be defined in the `.env` file, though they can also simply be
-defined on the command line or elsewhere. The `settings.py` is responsible for
-loading these environment variables and doing some preprocessing on them.
-The `settings.py` file is the entry point for all other scripts to these
-definitions. That is, all code that references these variables and others are
-loaded by importing `config`.
-
-### Naming Conventions
-
- - **`pull_` vs `load_`**: Files or functions that pull data from an external
- data source are prepended with "pull_", as in "pull_fred.py". Functions that
- load data that has been cached in the "_data" folder are prepended with "load_".
- For example, inside of the `pull_CRSP_Compustat.py` file there is both a
- `pull_compustat` function and a `load_compustat` function. The first pulls from
- the web, whereas the other loads cached data from the "_data" directory.
-
-
-### Dependencies and Virtual Environments
-
-#### Working with `conda` environments
-
-This project uses conda for environment management. The dependencies are stored in `environment.yml`.
-
-To create/update the environment:
-```bash
-conda env create -f environment.yml
-# or to update an existing environment:
-conda env update -f environment.yml
-```
-
-To activate the environment:
-```bash
-conda activate p02_greenwood_et_al_2022
-```
-
-To export the current environment:
-```bash
-conda env export > environment.yml
-```
-
-**Tip:** Consider using `mamba` instead of `conda` for faster package resolution. Install via [miniforge](https://github.com/conda-forge/miniforge).
-

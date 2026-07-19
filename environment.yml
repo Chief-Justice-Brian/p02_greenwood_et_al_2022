@@ -41,16 +41,7 @@ dependencies:
   - jupytext
   - notebook
 
-
-
-  - jaydebeapi
-
-
   - pip
   - pip:
-
       - chartbook[all]
-
-
-      - wrds==3.*
 
