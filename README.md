@@ -20,6 +20,24 @@ within 3 years rises from ~7% to ~40%. We attempt to:
    (local projection) specification the paper asserts in footnote 10 beat the
    static baseline on AUC (memory specific model).
 
+## Team Responsibilities
+
+The project is divided into two parallel workstreams, with final validation
+and presentation work completed together.
+
+| Owner | Primary responsibilities | Deliverables |
+|---|---|---|
+| **Brian Nguyen** | <ul><li>Source, pull, and clean the project data</li><li>Reproduce Figures 1 and 3</li><li>Extend the regression model with additional and lagged factors, and analyze and interpret the resulting estimates.</li></ul> | <ul><li>Analysis-ready dataset</li><li>Figures 1 and 3</li><li>Extended model incorporating current-crisis status, lagged GDP, lagged debt growth, lagged price growth, lagged R-Zone status, and related factors</li></ul> |
+| **Clara Duan** | <ul><li>Replicate Tables 1, 3, and 4</li><li>Create an interactive financial-crisis risk simulator and R-Zone tracker</li></ul> | <ul><li>Tables 1, 3, and 4</li><li>Interactive tool with configurable parameters</li><li>Breakdown of each parameter's contribution to the estimated crisis probability</li></ul> |
+| **Both** | <ul><li>Analyze and interpret of results from an extended model that incorporates additional explanatory variables.</li><li>Cross-check results against the paper</li><li>Run tests and review code</li><li>Prepare the final report and presentation</li></ul> | <ul><li>Analysis and interpretation of the extended model's results</li><li>Reproducible pipeline</li><li>Robustness checks</li><li>Documentation</li><li>Final report and slides</li></ul> |
+
+### Shared workflow
+- [ ] Create a LaTeX report containing all generated tables, figures, results, challenges, and conclusions.
+- [ ] Add or update entries in a Jupyter notebook that gives a guided tour of the cleaned data and analysis.
+- [ ] Add or update tests for each new data-processing or modeling step.
+- [ ] Review each other's work before merging.
+- [ ] Run `doit`, `pytest`, and the formatting checks on the integrated project.
+
 ## Quick Start
 
 Create and activate the conda environment, then let `doit` run everything:
