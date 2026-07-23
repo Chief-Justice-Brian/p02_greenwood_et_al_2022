@@ -56,6 +56,7 @@ const pointPriceNode = document.querySelector("#point-price");
 const zoneStatusNode = document.querySelector("#zone-status");
 const summaryNode = document.querySelector("#scenario-summary");
 const chartNode = document.querySelector("#risk-chart");
+const contributionChartNode = document.querySelector("#contribution-chart");
 
 let currentScenario = null;
 let selectedPoint = { debt: 12, price: 18 };
@@ -192,27 +193,81 @@ function logistic(value) {
   return 1 / (1 + Math.exp(-value));
 }
 
-function riskAt(debt, price, scenario) {
+function riskTerms(debt, price, scenario) {
   const debtSignal = (debt - scenario.debtThreshold) / 7.5;
   const priceSignal = (price - scenario.priceThreshold) / 10;
-  const interaction =
-    debt >= scenario.debtThreshold && price >= scenario.priceThreshold ? 0.9 : 0;
   const horizonEffect = (scenario.horizon - 1) * 0.16;
   const countryEffect = ((hashCountry(scenario.country) % 11) - 5) / 34;
+
+  return {
+    baseline: -3.35 + horizonEffect + countryEffect,
+    debt: 0.72 * debtSignal,
+    price: 0.6 * priceSignal,
+    interaction:
+      debt >= scenario.debtThreshold && price >= scenario.priceThreshold
+        ? 0.9
+        : 0,
+  };
+}
+
+function boundedProbability(logit) {
   return Math.min(
     0.86,
-    Math.max(
-      0.015,
-      logistic(
-        -3.35 +
-          0.72 * debtSignal +
-          0.6 * priceSignal +
-          interaction +
-          horizonEffect +
-          countryEffect,
-      ),
-    ),
+    Math.max(0.015, logistic(logit)),
   );
+}
+
+function riskAt(debt, price, scenario) {
+  const terms = riskTerms(debt, price, scenario);
+  return boundedProbability(
+    terms.baseline + terms.debt + terms.price + terms.interaction,
+  );
+}
+
+function decomposeRisk(debt, price, scenario) {
+  const terms = riskTerms(debt, price, scenario);
+  const features = ["debt", "price", "interaction"];
+  const permutations = [
+    ["debt", "price", "interaction"],
+    ["debt", "interaction", "price"],
+    ["price", "debt", "interaction"],
+    ["price", "interaction", "debt"],
+    ["interaction", "debt", "price"],
+    ["interaction", "price", "debt"],
+  ];
+  const contributions = { debt: 0, price: 0, interaction: 0 };
+
+  function coalitionRisk(included) {
+    const featureLogit = features.reduce(
+      (total, feature) => total + (included.has(feature) ? terms[feature] : 0),
+      0,
+    );
+    return boundedProbability(terms.baseline + featureLogit);
+  }
+
+  permutations.forEach((permutation) => {
+    const included = new Set();
+    let previousRisk = coalitionRisk(included);
+
+    permutation.forEach((feature) => {
+      included.add(feature);
+      const nextRisk = coalitionRisk(included);
+      contributions[feature] += nextRisk - previousRisk;
+      previousRisk = nextRisk;
+    });
+  });
+
+  features.forEach((feature) => {
+    contributions[feature] /= permutations.length;
+  });
+
+  return {
+    baseline: coalitionRisk(new Set()),
+    debt: contributions.debt,
+    price: contributions.price,
+    interaction: contributions.interaction,
+    total: coalitionRisk(new Set(features)),
+  };
 }
 
 function axisValues(start, end, step) {
@@ -386,6 +441,127 @@ function renderChart(scenario, animate = true) {
   summaryNode.textContent = `${scenario.country} · ${scenario.year} · ${scenario.sector} sector · ${scenario.horizon}-year forecast`;
   zoneStatusNode.textContent = inRZone ? "Inside R-Zone" : "Outside R-Zone";
   zoneStatusNode.classList.toggle("in-zone", inRZone);
+  renderContributionChart(scenario);
+}
+
+function formatContribution(value) {
+  const percentagePoints = value * 100;
+  const sign = percentagePoints > 0.05 ? "+" : "";
+  return `${sign}${percentagePoints.toFixed(1)} pp`;
+}
+
+function renderContributionChart(scenario) {
+  const breakdown = decomposeRisk(
+    selectedPoint.debt,
+    selectedPoint.price,
+    scenario,
+  );
+  const labels = [
+    "Country baseline",
+    "Debt growth",
+    "Price growth",
+    "R-Zone",
+    "Total risk",
+  ];
+  const values = [
+    breakdown.baseline,
+    breakdown.debt,
+    breakdown.price,
+    breakdown.interaction,
+    breakdown.total,
+  ].map((value) => value * 100);
+  const bases = [
+    0,
+    breakdown.baseline * 100,
+    (breakdown.baseline + breakdown.debt) * 100,
+    (breakdown.baseline + breakdown.debt + breakdown.price) * 100,
+    0,
+  ];
+  const colors = ["#466b5e", "#2b8065", "#c9943e", "#ce3d37", "#18251f"];
+  const text = [
+    formatContribution(breakdown.baseline),
+    formatContribution(breakdown.debt),
+    formatContribution(breakdown.price),
+    formatContribution(breakdown.interaction),
+    `${(breakdown.total * 100).toFixed(1)}%`,
+  ];
+  const cumulative = [
+    breakdown.baseline,
+    breakdown.baseline + breakdown.debt,
+    breakdown.baseline + breakdown.debt + breakdown.price,
+    breakdown.total,
+  ].map((value) => value * 100);
+  const allEndpoints = [...bases, ...bases.map((base, index) => base + values[index])];
+  const dataMin = Math.min(0, ...allEndpoints);
+  const dataMax = Math.max(...allEndpoints);
+  const padding = Math.max(3, (dataMax - dataMin) * 0.22);
+
+  const trace = {
+    type: "bar",
+    x: labels,
+    y: values,
+    base: bases,
+    marker: {
+      color: colors,
+      line: { color: "#fffdf8", width: 1 },
+    },
+    text,
+    textposition: "outside",
+    textfont: { size: 11, color: "#28372f" },
+    cliponaxis: false,
+    customdata: values,
+    hovertemplate:
+      "<b>%{x}</b><br>%{customdata:+.1f} percentage points<extra></extra>",
+  };
+
+  const connectorShapes = cumulative.slice(0, 3).map((level, index) => ({
+    type: "line",
+    x0: index,
+    x1: index + 1,
+    y0: level,
+    y1: level,
+    xref: "x",
+    yref: "y",
+    line: { color: "#aeb8b2", width: 1, dash: "dot" },
+    layer: "below",
+  }));
+
+  Plotly.react(
+    contributionChartNode,
+    [trace],
+    {
+      margin: { t: 24, r: 14, b: 58, l: 48 },
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(0,0,0,0)",
+      font: { family: "DM Sans, sans-serif", color: "#526159" },
+      bargap: 0.42,
+      xaxis: {
+        tickfont: { size: 10 },
+        fixedrange: true,
+      },
+      yaxis: {
+        title: { text: "Crisis probability (pp)", font: { size: 10 } },
+        range: [dataMin - padding, dataMax + padding],
+        ticksuffix: " pp",
+        tickfont: { size: 9 },
+        gridcolor: "rgba(24,37,31,0.09)",
+        zerolinecolor: "rgba(24,37,31,0.35)",
+        fixedrange: true,
+      },
+      shapes: connectorShapes,
+      showlegend: false,
+      hoverlabel: {
+        bgcolor: "#18251f",
+        bordercolor: "#18251f",
+        font: { color: "#fff", size: 11 },
+      },
+    },
+    {
+      displayModeBar: false,
+      responsive: true,
+      scrollZoom: false,
+    },
+  );
 }
 
 function generate(event) {

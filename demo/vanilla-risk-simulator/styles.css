@@ -616,6 +616,56 @@ select:focus {
   background: var(--red-soft);
 }
 
+.contribution-panel {
+  margin-top: 34px;
+  padding-top: 30px;
+  border-top: 1px solid var(--line);
+}
+
+.contribution-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.contribution-heading .eyebrow {
+  margin-bottom: 5px;
+}
+
+.contribution-heading h3 {
+  margin: 0;
+  font-family: "Manrope", sans-serif;
+  font-size: 20px;
+  letter-spacing: -0.035em;
+}
+
+.contribution-heading > p {
+  max-width: 250px;
+  margin: 0;
+  color: #758078;
+  font-size: 10px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.contribution-heading > p strong {
+  color: var(--ink-soft);
+}
+
+#contribution-chart {
+  width: 100%;
+  height: 290px;
+  margin-top: 12px;
+}
+
+.contribution-note {
+  margin: -3px 0 0;
+  color: #7d8781;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
 .definition {
   padding: 86px 0 82px;
 }
@@ -751,6 +801,20 @@ footer {
   .selection-readout {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .contribution-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .contribution-heading > p {
+    text-align: left;
+  }
+
+  #contribution-chart {
+    height: 320px;
   }
 
   .definition {

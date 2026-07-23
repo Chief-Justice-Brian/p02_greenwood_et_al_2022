@@ -203,6 +203,27 @@
               </div>
               <div id="zone-status" class="zone-status">Outside R-Zone</div>
             </div>
+
+            <section class="contribution-panel" aria-labelledby="contribution-title">
+              <div class="contribution-heading">
+                <div>
+                  <p class="eyebrow">Risk composition</p>
+                  <h3 id="contribution-title">What drives this estimate?</h3>
+                </div>
+                <p>
+                  Contribution to total crisis probability,
+                  <strong>percentage points</strong>
+                </p>
+              </div>
+              <div
+                id="contribution-chart"
+                aria-label="Waterfall chart of crisis-risk contributions"
+              ></div>
+              <p class="contribution-note">
+                Contributions use an order-independent Shapley decomposition
+                and add exactly to the selected-point risk.
+              </p>
+            </section>
           </section>
         </section>
 
