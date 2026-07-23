@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Framework-free demo of an interactive financial-crisis risk simulator and R-Zone tracker."
+    />
+    <title>Financial Crisis Risk Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand" href="#" aria-label="Signal Lab home">
+          <span class="brand-mark" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </span>
+          <span>Signal Lab</span>
+        </a>
+        <span class="demo-badge"><i></i> Prototype · synthetic data</span>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div>
+            <p class="eyebrow">R-Zone monitor</p>
+            <h1>See where financial<br />pressure starts to build.</h1>
+          </div>
+          <p class="hero-copy">
+            Explore how debt and asset-price growth combine to shape estimated
+            crisis risk. Choose a market and horizon to generate an
+            illustrative risk surface.
+          </p>
+        </section>
+
+        <section class="workspace" aria-label="Risk simulator">
+          <aside class="control-panel">
+            <div class="panel-heading">
+              <span>01</span>
+              <div>
+                <p class="eyebrow">Configure</p>
+                <h2>Set your scenario</h2>
+              </div>
+            </div>
+
+            <form id="simulator-form" novalidate>
+              <div class="field country-field">
+                <label for="country-search">Country</label>
+                <div class="search-wrap">
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="6.5"></circle>
+                    <path d="m16 16 4 4"></path>
+                  </svg>
+                  <input
+                    id="country-search"
+                    type="search"
+                    value="United States"
+                    placeholder="Search 42 countries"
+                    autocomplete="off"
+                    aria-autocomplete="list"
+                    aria-controls="country-options"
+                    aria-expanded="false"
+                  />
+                </div>
+                <div
+                  id="country-options"
+                  class="country-options"
+                  role="listbox"
+                  hidden
+                ></div>
+                <p id="country-error" class="field-error" aria-live="polite"></p>
+              </div>
+
+              <div class="control-row">
+                <div class="field">
+                  <label for="year">Year</label>
+                  <div class="select-wrap">
+                    <select id="year" aria-label="Year"></select>
+                    <svg aria-hidden="true" viewBox="0 0 20 20">
+                      <path d="m5 7.5 5 5 5-5"></path>
+                    </svg>
+                  </div>
+                </div>
+
+                <fieldset class="field">
+                  <legend>Sector</legend>
+                  <div class="segmented">
+                    <input
+                      id="sector-business"
+                      name="sector"
+                      type="radio"
+                      value="Business"
+                      checked
+                    />
+                    <label for="sector-business">Business</label>
+                    <input
+                      id="sector-household"
+                      name="sector"
+                      type="radio"
+                      value="Household"
+                    />
+                    <label for="sector-household">Household</label>
+                  </div>
+                </fieldset>
+              </div>
+
+              <fieldset class="field horizon-field">
+                <legend>Forecast horizon</legend>
+                <div class="horizon-options">
+                  <input id="horizon-1" name="horizon" type="radio" value="1" />
+                  <label for="horizon-1"><strong>1</strong><span>year</span></label>
+                  <input id="horizon-2" name="horizon" type="radio" value="2" />
+                  <label for="horizon-2"><strong>2</strong><span>years</span></label>
+                  <input
+                    id="horizon-3"
+                    name="horizon"
+                    type="radio"
+                    value="3"
+                    checked
+                  />
+                  <label for="horizon-3"><strong>3</strong><span>years</span></label>
+                  <input id="horizon-4" name="horizon" type="radio" value="4" />
+                  <label for="horizon-4"><strong>4</strong><span>years</span></label>
+                </div>
+              </fieldset>
+
+              <button class="generate-button" type="submit">
+                Generate risk surface
+                <svg aria-hidden="true" viewBox="0 0 20 20">
+                  <path d="M4 10h11M11 6l4 4-4 4"></path>
+                </svg>
+              </button>
+            </form>
+
+            <div class="method-note">
+              <span>i</span>
+              <p>
+                <strong>Demo methodology</strong>
+                Values are synthetic and for interface testing only. They are
+                not historical estimates or financial advice.
+              </p>
+            </div>
+          </aside>
+
+          <section class="results-panel" aria-live="polite">
+            <div class="results-heading">
+              <div>
+                <div class="panel-heading">
+                  <span>02</span>
+                  <div>
+                    <p class="eyebrow">Explore</p>
+                    <h2>Risk surface</h2>
+                  </div>
+                </div>
+                <p id="scenario-summary" class="scenario-summary"></p>
+              </div>
+              <div class="risk-key" aria-label="Risk color scale">
+                <span>Lower risk</span>
+                <i></i>
+                <span>Higher risk</span>
+              </div>
+            </div>
+
+            <div class="metric-strip">
+              <div class="metric">
+                <span>Debt threshold · top 20%</span>
+                <strong id="debt-threshold">—</strong>
+              </div>
+              <div class="metric">
+                <span>Price threshold · top 33%</span>
+                <strong id="price-threshold">—</strong>
+              </div>
+              <div class="metric accent">
+                <span>Selected-point risk</span>
+                <strong id="selected-risk">—</strong>
+              </div>
+            </div>
+
+            <div class="chart-wrap">
+              <div id="risk-chart" aria-label="Financial crisis risk heatmap"></div>
+              <div class="chart-help">
+                <span>Click anywhere on the grid to test a scenario</span>
+                <span class="r-zone-key"><i></i> R-Zone</span>
+              </div>
+            </div>
+
+            <div class="selection-readout">
+              <div>
+                <p class="eyebrow">Selected point</p>
+                <p>
+                  <strong id="point-debt">—</strong> debt growth
+                  <span></span>
+                  <strong id="point-price">—</strong> price growth
+                </p>
+              </div>
+              <div id="zone-status" class="zone-status">Outside R-Zone</div>
+            </div>
+          </section>
+        </section>
+
+        <section class="definition">
+          <p class="eyebrow">How to read the grid</p>
+          <div class="definition-grid">
+            <h2>The R-Zone marks the joint tail.</h2>
+            <p>
+              A point enters the R-Zone only when debt growth is in its
+              <strong>top quintile</strong> and price growth is in its
+              <strong>top tercile</strong>. The red outline updates to show
+              those illustrative bounds for the selected scenario.
+            </p>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span>Predictable Financial Crises · Replication prototype</span>
+        <span>Greenwood et al. (2022)</span>
+      </footer>
+    </div>
+
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

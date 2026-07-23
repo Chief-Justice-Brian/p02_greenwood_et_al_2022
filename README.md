@@ -58,6 +58,20 @@ Run the unit tests alone with:
 pytest
 ```
 
+### Interactive UI prototype
+
+The first financial-crisis risk simulator prototype uses plain HTML, CSS, and
+JavaScript with Plotly—no UI framework. It currently uses synthetic values so
+the interaction and visual design can be evaluated before real data is
+available.
+
+```bash
+npm install
+npm run dev
+```
+
+The prototype is located in `demo/vanilla-risk-simulator/`.
+
 ## Data Sources
 
 With one exception, every source in our pipeline is one the paper itself
