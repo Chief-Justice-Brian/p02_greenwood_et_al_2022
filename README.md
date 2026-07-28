@@ -88,7 +88,7 @@ IMF stopped collecting share prices in 2017.
 | OECD Analytical House Prices | House prices: supplement (their footnote 7) | Same | `src/pull_oecd_house_prices.py` |
 | World Bank WDI | Inflation + GDP | Same | `src/pull_worldbank_wdi.py` |
 
-Since our non-equity data sources are identical to the original paper (vintages aside), substitution risk is isolated to the equity column. This explains why our only deviation from Table 1 occurs in equity standard deviation (45.7 vs. 48.8)—a expected result given our reliance on alternative paid data sources.
+Since our non-equity data sources are identical to the original paper (vintages aside), substitution risk is isolated to the equity column. This explains why our only deviation from Table 1 occurs in equity standard deviation (46.8 vs. 48.8)—an expected result given our reliance on free alternatives to the paper's paid equity sources.
 
 ## Formatting
 
