@@ -1,19 +1,27 @@
 """Pull the Jorda-Schularick-Taylor Macrohistory Database (Release 6).
 
-The JST database (https://www.macrohistory.net/database/) covers 18 advanced
-economies, annually, 1870-2020, with 48 variables. It is free for academic use.
+The JST database (https://www.macrohistory.net/database/) is an annual panel of
+advanced economies reaching back to the nineteenth century -- the deepest
+history of any source in this project. It is free for academic use.
 
 In this project JST serves as a SUPPLEMENTARY source, exactly as in
 Greenwood-Hanson-Shleifer-Sorensen (2022):
-- equity prices: fills country-years missing from the IMF IFS share price
-  indices (e.g., pre-1957 for several European countries)
-- house prices: fills country-years missing from BIS/OECD residential
-  property price series
-- CPI / GDP: fills gaps in World Bank WDI (WDI starts in 1960)
-- ``crisisJST``: the JST crisis chronology, compared against BVX in Table 1
 
-Output: the full R6 panel saved as ``jst_macrohistory.parquet`` (the file is
-small, so we keep every column and let the cleaning stage choose).
+equity prices
+    Fill country-years missing from the IMF IFS share price indices
+    (e.g. pre-1957 for several European countries).
+house prices
+    Fill country-years missing from the BIS/OECD residential property price
+    series.
+CPI / GDP
+    Fill gaps in World Bank WDI, which starts only in 1960.
+``crisisJST``
+    The JST crisis chronology, compared against BVX and Reinhart-Rogoff in
+    Table 1.
+
+Output: ``jst_macrohistory.parquet``, the full R6 panel, one row per
+country-year with every JST variable as a column. The file is small, so we keep
+them all and let the cleaning stage choose.
 
 References
 ----------
@@ -21,7 +29,7 @@ References
   and full variable documentation): https://www.macrohistory.net/database/
 - ``JST_DTA_URL`` is the R6 .dta link from that page (302-redirects to the
   site's CDN; requests follows it).
-- Update cadence: a new release every few years; R6 (May 2022) is current.
+- Update frequency: a new release every few years; R6 (May 2022) is current.
   The landing page names the latest release -- if it advertises R7+, take
   the new download link from there.
 - Citation: Jorda, Schularick and Taylor, "Macrofinancial History and the
@@ -58,7 +66,7 @@ def pull_jst_macrohistory(url=JST_DTA_URL):
 
 
 def load_jst_macrohistory(data_dir=DATA_DIR):
-    """Load the JST panel: one row per (country, year), 18 countries 1870-2020."""
+    """Load the JST panel: one row per (country, year)."""
     return pd.read_parquet(Path(data_dir) / "jst_macrohistory.parquet")
 
 

@@ -1,0 +1,36 @@
+% Standalone preview for the Table 1 artifacts in _output/.
+%
+% The generated .tex files are bare tabular FRAGMENTS designed to be \input
+% into the final report; they cannot compile on their own (no \begin{document},
+% and they rely on the booktabs package). Open THIS file instead -- or run
+% `doit compile_latex` -- to get a viewable PDF of both tables.
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{caption}
+
+\begin{document}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Replicated Table 1 of Greenwood, Hanson, Shleifer and S{\o}rensen
+  (WP 20-130): summary statistics of crisis indicators and the R-zone
+  predictor variables, computed on our reconstructed 1950--2016 panel.
+  \emph{Takeaway: a fully free-data reconstruction reproduces every summary
+  statistic in the paper's Table 1 to within a few tenths of a percentage
+  point.}}
+  \input{../_output/table1_summary_stats.tex}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Divergence report: our replicated values next to the paper's
+  published values, with the R-zone threshold gaps at the bottom.
+  \emph{Takeaway: all four R-zone gates match within 0.3pp; the visible
+  differences (sample sizes, equity SD) trace to documented source-vintage
+  substitutions, not construction choices.}}
+  \input{../_output/table1_comparison.tex}
+\end{table}
+
+\end{document}

@@ -6,29 +6,34 @@ Economics 136(1), 2021. Their replication kit is posted on Harvard Dataverse
 chronology that Greenwood-Hanson-Shleifer-Sorensen (2022) use as their baseline
 crisis definition.
 
-Two files inside the zip are extracted and saved as parquet:
+Two files inside the zip are extracted and saved as parquet.
 
-1. ``Narrative Crisis List, Panics List, and BVX List.dta``
-   -> ``bvx_crisis_list.parquet``
-   One row per (country, crisis episode): 407 rows. Key columns:
-   - ``revised``: the year of the crisis under the revised BVX chronology
-     (this is THE BVX crisis list; NaN means the episode is not a BVX crisis)
-   - ``panic``: 1 if there was a banking panic
-   - ``bankeqdecline``: 1 if bank equity declined more than 30%
-   - ``bankfailures_widespread``: 1 if there were widespread bank failures
+Output 1: ``bvx_crisis_list.parquet``, from ``Narrative Crisis List, Panics
+List, and BVX List.dta`` -- one row per country-episode. Key columns:
 
-2. ``BVX_annual_regdata.dta`` -> ``bvx_annual_regdata.parquet``
-   Country-year panel (6,177 rows x 126 cols), 46 countries, 1870-2016.
-   Key columns for our project:
-   - ``RC``: revised BVX crisis indicator (the chronology GHSS use)
-   - ``JC``: joint crisis indicator
-   - ``ReinhartRogoffCrisis``, ``LaevenValenciaCrisis``: alternative
-     chronologies compared in the paper's Table 1
+``revised``
+    Year of the crisis under the revised BVX chronology. This is THE BVX
+    crisis list; NaN means the episode is not a BVX crisis.
+``panic``
+    1 if there was a banking panic.
+``bankeqdecline``
+    1 if bank equity declined more than 30 percent.
+``bankfailures_widespread``
+    1 if there were widespread bank failures.
+
+Output 2: ``bvx_annual_regdata.parquet``, from ``BVX_annual_regdata.dta`` --
+one row per country-year, carrying the paper's full set of regression
+variables. Key columns for our project:
+
+``RC``
+    Revised BVX crisis indicator (the chronology GHSS use).
+``JC``
+    Joint crisis indicator.
+``ReinhartRogoffCrisis``, ``LaevenValenciaCrisis``
+    Alternative chronologies compared in the paper's Table 1.
 
 The BVX list ends in 2016. The 2023 out-of-sample episode is scored separately
 by our own code against BVX's stated criteria.
-
-The awkward member filenames are read directly from the zip via BytesIO, never written to disk.
 
 References
 ----------
@@ -38,19 +43,17 @@ References
   https://guides.dataverse.org/en/latest/api/dataaccess.html
 - Dataverse Native API (dataset metadata: file ids, version history):
   https://guides.dataverse.org/en/latest/api/native-api.html
+- Update frequency: a frozen replication kit, not a living dataset -- version
+  1.2 since 2020-12-23 (stability is the desired property for a replication
+  input). To check whether the authors ever publish a new version::
 
-Update cadence: this is a frozen replication kit, not a living dataset --
-version 1.2 since 2020-12-23 (stability is the desired property for a
-replication input). To check whether the authors ever publish a new version:
+      GET https://dataverse.harvard.edu/api/datasets/:persistentId/versions
+          ?persistentId=doi:10.7910/DVN/ECC9GE
 
-    GET https://dataverse.harvard.edu/api/datasets/:persistentId/versions
-        ?persistentId=doi:10.7910/DVN/ECC9GE
-
-If a new version replaces the zip, the numeric file id in ``BVX_ZIP_URL``
-changes; re-derive it from the same endpoint's ``files`` listing.
-
-Citation: Baron, Verner and Xiong, "Replication Data for: 'Banking Crises
-without Panics'," Harvard Dataverse, V1.2, doi:10.7910/DVN/ECC9GE.
+  If a new version replaces the zip, the numeric file id in ``BVX_ZIP_URL``
+  changes; re-derive it from the same endpoint's ``files`` listing.
+- Citation: Baron, Verner and Xiong, "Replication Data for: 'Banking Crises
+  without Panics'," Harvard Dataverse, V1.2, doi:10.7910/DVN/ECC9GE.
 """
 
 import io
@@ -86,8 +89,8 @@ def parse_bvx_zip(zip_bytes):
     Returns
     -------
     (crisis_list_df, annual_regdata_df) : tuple of pd.DataFrame
-        crisis_list_df: one row per crisis episode (407 x 11)
-        annual_regdata_df: country-year panel (6177 x 126)
+        crisis_list_df: one row per crisis episode
+        annual_regdata_df: one row per country-year
     """
     zip_file = zipfile.ZipFile(io.BytesIO(zip_bytes))
     member_names = zip_file.namelist()
@@ -113,7 +116,7 @@ def load_bvx_crisis_list(data_dir=DATA_DIR):
 
 
 def load_bvx_annual_regdata(data_dir=DATA_DIR):
-    """Load the parsed BVX country-year panel (46 countries, 1870-2016)."""
+    """Load the parsed BVX country-year panel."""
     return pd.read_parquet(Path(data_dir) / "bvx_annual_regdata.parquet")
 
 

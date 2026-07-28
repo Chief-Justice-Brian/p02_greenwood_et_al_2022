@@ -1,5 +1,12 @@
 """Run or update the project. This file uses the `doit` Python package. It works
-like a Makefile, but is Python-based
+like a Makefile, but is Python-based.
+
+Pipeline stages (each stage only depends on the previous one):
+1. config     -- create _data/_output directories
+2. pull       -- download every raw data source (all free, no API keys):
+                 BVX crisis chronology, JST Macrohistory, BIS total credit,
+                 BIS property prices, IMF Global Debt Database, IMF share
+                 prices, OECD share prices, OECD house prices, World Bank WDI
 
 """
 
@@ -12,6 +19,7 @@ import sys
 sys.path.insert(1, "./src/")
 
 import shutil
+import subprocess
 from os import environ
 from pathlib import Path
 
@@ -25,7 +33,6 @@ DATA_DIR = config("DATA_DIR")
 MANUAL_DATA_DIR = config("MANUAL_DATA_DIR")
 OUTPUT_DIR = config("OUTPUT_DIR")
 OS_TYPE = config("OS_TYPE")
-USER = config("USER")
 
 ## Helpers for handling Jupyter Notebook tasks
 environ["PYDEVD_DISABLE_FILE_VALIDATION"] = "1"
@@ -85,138 +92,211 @@ def task_config():
     }
 
 
+# One entry per data source: script name -> the parquet files it produces.
+# No raw data in the repo; everything regenerates from `doit`).
+pull_tasks = {
+    "bvx_crises": {
+        "script": "pull_bvx_crises.py",
+        "doc": "BVX (2021) banking-crisis chronology from Harvard Dataverse",
+        "outputs": [
+            "bvx_crisis_list.parquet",
+            "bvx_annual_regdata.parquet",
+        ],
+    },
+    "jst_macrohistory": {
+        "script": "pull_jst_macrohistory.py",
+        "doc": "Jorda-Schularick-Taylor Macrohistory panel (R6)",
+        "outputs": ["jst_macrohistory.parquet"],
+    },
+    "bis_total_credit": {
+        "script": "pull_bis_total_credit.py",
+        "doc": "BIS total credit to households and non-financial corporates",
+        "outputs": ["bis_total_credit.parquet"],
+    },
+    "bis_property_prices": {
+        "script": "pull_bis_property_prices.py",
+        "doc": "BIS selected residential property prices",
+        "outputs": ["bis_property_prices.parquet"],
+    },
+    "imf_gdd": {
+        "script": "pull_imf_gdd.py",
+        "doc": "IMF Global Debt Database (household/corporate debt to GDP)",
+        "outputs": ["imf_gdd.parquet"],
+    },
+    "imf_equity": {
+        "script": "pull_imf_equity.py",
+        "doc": "IMF (former IFS) share price indices, 1950-2016",
+        "outputs": ["imf_equity.parquet"],
+    },
+    "oecd_share_prices": {
+        "script": "pull_oecd_share_prices.py",
+        "doc": "OECD share price indices, 1950-present",
+        "outputs": ["oecd_share_prices.parquet"],
+    },
+    "oecd_house_prices": {
+        "script": "pull_oecd_house_prices.py",
+        "doc": "OECD analytical house price indicators",
+        "outputs": ["oecd_house_prices.parquet"],
+    },
+    "worldbank_wdi": {
+        "script": "pull_worldbank_wdi.py",
+        "doc": "World Bank WDI: CPI and nominal GDP",
+        "outputs": ["worldbank_wdi.parquet"],
+    },
+}
+
+
 def task_pull():
     """Pull data from external sources"""
-    yield {
-        "name": "fred",
-        "doc": "Pull data from FRED",
-        "actions": [
-            "python ./src/settings.py",
-            "python ./src/pull_fred.py",
-        ],
-        "targets": [DATA_DIR / "fred.parquet"],
-        "file_dep": ["./src/settings.py", "./src/pull_fred.py"],
-        "clean": [],
-    }
-    yield {
-        "name": "ofr",
-        "doc": "Pull data from OFR API",
-        "actions": [
-            "python ./src/settings.py",
-            "python ./src/pull_ofr_api_data.py",
-        ],
-        "targets": [DATA_DIR / "ofr_public_repo_data.parquet"],
-        "file_dep": ["./src/settings.py", "./src/pull_ofr_api_data.py"],
-        "clean": [],
-    }
-    yield {
-        "name": "crsp_stock",
-        "doc": "Pull CRSP stock data from WRDS",
-        "actions": [
-            "python ./src/settings.py",
-            "python ./src/pull_CRSP_stock.py",
-        ],
-        "targets": [DATA_DIR / "CRSP_monthly_stock.parquet"],
-        "file_dep": ["./src/settings.py", "./src/pull_CRSP_stock.py"],
-        "clean": [],
-    }
-    yield {
-        "name": "crsp_compustat",
-        "doc": "Pull CRSP Compustat data from WRDS",
-        "actions": [
-            "python ./src/settings.py",
-            "python ./src/pull_CRSP_Compustat.py",
-        ],
-        "targets": [DATA_DIR / "CRSP_Compustat.parquet"],
-        "file_dep": ["./src/settings.py", "./src/pull_CRSP_compustat.py"],
-        "clean": [],
-    }
+    for task_name, task_info in pull_tasks.items():
+        script_path = f"./src/{task_info['script']}"
+        yield {
+            "name": task_name,
+            "doc": task_info["doc"],
+            "actions": [f"python {script_path}"],
+            "targets": [DATA_DIR / output for output in task_info["outputs"]],
+            "file_dep": ["./src/settings.py", script_path],
+            "clean": [],
+        }
 
 
-def task_summary_stats():
-    """Generate summary statistics tables"""
-    file_dep = ["./src/example_table.py"]
-    file_output = [
-        "example_table.tex",
-        "pandas_to_latex_simple_table1.tex",
-    ]
-    targets = [OUTPUT_DIR / file for file in file_output]
+TIDY_HELPER_MODULES = [
+    "./src/settings.py",
+    "./src/country_sample.py",
+    "./src/panel_utils.py",
+]
 
-    return {
-        "actions": [
-            "python ./src/example_table.py",
-            "python ./src/pandas_to_latex_demo.py",
+# The tidy-data stage: each entry cleans pulled sources into one tidy panel.
+# input_data/outputs are files in DATA_DIR; doit chains the stages via these
+# file dependencies (pull -> deflators -> equity -> ... -> analysis panel).
+clean_tasks = {
+    "macro_deflators": {
+        "script": "clean_macro_deflators.py",
+        "doc": "Continuous log-CPI deflator panel (WDI + JST chained)",
+        "input_data": ["worldbank_wdi.parquet", "jst_macrohistory.parquet"],
+        "outputs": ["macro_deflators.parquet"],
+    },
+    "crisis_chronologies": {
+        "script": "clean_crisis_chronologies.py",
+        "doc": "Tidy BVX/JST/RR crisis indicator panel",
+        "input_data": ["bvx_annual_regdata.parquet", "jst_macrohistory.parquet"],
+        "outputs": ["crisis_panel.parquet"],
+    },
+    "credit_panel": {
+        "script": "clean_credit_panel.py",
+        "doc": "Spliced 3-year credit growth (GDD -> BIS -> JST)",
+        "input_data": [
+            "imf_gdd.parquet",
+            "bis_total_credit.parquet",
+            "jst_macrohistory.parquet",
+            "worldbank_wdi.parquet",
+            "macro_deflators.parquet",
         ],
-        "targets": targets,
-        "file_dep": file_dep,
+        "outputs": ["credit_panel.parquet"],
+    },
+    "equity_panel": {
+        "script": "clean_equity_panel.py",
+        "doc": "Spliced 3-year real equity growth (IMF -> JST -> OECD)",
+        "input_data": [
+            "imf_equity.parquet",
+            "jst_macrohistory.parquet",
+            "oecd_share_prices.parquet",
+            "macro_deflators.parquet",
+        ],
+        "outputs": ["equity_panel.parquet"],
+    },
+    "house_price_panel": {
+        "script": "clean_house_price_panel.py",
+        "doc": "Spliced 3-year real house price growth (BIS -> OECD -> JST)",
+        "input_data": [
+            "bis_property_prices.parquet",
+            "oecd_house_prices.parquet",
+            "jst_macrohistory.parquet",
+        ],
+        "outputs": ["house_price_panel.parquet"],
+    },
+    "analysis_panel": {
+        "script": "build_analysis_panel.py",
+        "doc": "Shared 42-country analysis panel with paper-sample flag",
+        "input_data": [
+            "crisis_panel.parquet",
+            "credit_panel.parquet",
+            "equity_panel.parquet",
+            "house_price_panel.parquet",
+        ],
+        "outputs": ["rzone_analysis_panel.parquet"],
+    },
+}
+
+
+def task_tidy():
+    """Clean pulled data into tidy panels and build the shared analysis panel"""
+    for task_name, task_info in clean_tasks.items():
+        script_path = f"./src/{task_info['script']}"
+        yield {
+            "name": task_name,
+            "doc": task_info["doc"],
+            "actions": [f"python {script_path}"],
+            "targets": [DATA_DIR / output for output in task_info["outputs"]],
+            "file_dep": [
+                script_path,
+                *TIDY_HELPER_MODULES,
+                *[DATA_DIR / input_file for input_file in task_info["input_data"]],
+            ],
+            "clean": [],
+        }
+
+
+def task_analysis():
+    """Build the replication exhibits from the analysis panel"""
+    yield {
+        "name": "table1",
+        "doc": "Table 1 summary statistics + divergence report vs the paper",
+        "actions": ["python ./src/table1_summary_stats.py"],
+        "targets": [
+            OUTPUT_DIR / "table1_stats.csv",
+            OUTPUT_DIR / "table1_summary_stats.tex",
+            OUTPUT_DIR / "table1_comparison.tex",
+        ],
+        "file_dep": [
+            "./src/table1_summary_stats.py",
+            "./src/paper_benchmarks.py",
+            "./src/settings.py",
+            DATA_DIR / "rzone_analysis_panel.parquet",
+        ],
         "clean": True,
     }
 
 
-def task_example_plot():
-    """Example plots"""
-    file_dep = [Path("./src") / file for file in ["example_plot.py", "pull_fred.py"]]
-    file_output = ["example_plot.png"]
-    targets = [OUTPUT_DIR / file for file in file_output]
-
-    return {
+def task_compile_latex():
+    """Compile the LaTeX preview documents to PDFs"""
+    yield {
+        "name": "table1_preview",
+        "doc": "Viewable PDF of the Table 1 replication + divergence report",
         "actions": [
-            "python ./src/example_plot.py",
+            "latexmk -pdf -halt-on-error -cd ./reports/table1_preview.tex",
+            "latexmk -pdf -halt-on-error -c -cd ./reports/table1_preview.tex",
         ],
-        "targets": targets,
-        "file_dep": file_dep,
-        "clean": True,
-    }
-
-
-def task_chart_repo_rates():
-    """Example charts for Chartbook"""
-    file_dep = [
-        "./src/pull_fred.py",
-        "./src/chart_relative_repo_rates.py",
-    ]
-    targets = [
-        DATA_DIR / "repo_public.parquet",
-        DATA_DIR / "repo_public.xlsx",
-        DATA_DIR / "repo_public_relative_fed.parquet",
-        DATA_DIR / "repo_public_relative_fed.xlsx",
-        OUTPUT_DIR / "repo_rates.html",
-        OUTPUT_DIR / "repo_rates_normalized.html",
-        OUTPUT_DIR / "repo_rates_normalized_w_balance_sheet.html",
-    ]
-
-    return {
-        "actions": [
-            "python ./src/chart_relative_repo_rates.py",
+        "targets": ["./reports/table1_preview.pdf"],
+        "file_dep": [
+            "./reports/table1_preview.tex",
+            OUTPUT_DIR / "table1_summary_stats.tex",
+            OUTPUT_DIR / "table1_comparison.tex",
         ],
-        "targets": targets,
-        "file_dep": file_dep,
         "clean": True,
     }
 
 
 notebook_tasks = {
-    "01_example_notebook_interactive.ipynb.py": {
-        "path": "./src/01_example_notebook_interactive.ipynb.py",
-        "file_dep": [],
-        "targets": [],
-    },
-    "02_example_with_dependencies.ipynb.py": {
-        "path": "./src/02_example_with_dependencies.ipynb.py",
-        "file_dep": ["./src/pull_fred.py"],
-        "targets": [OUTPUT_DIR / "GDP_graph.png"],
-    },
-    "03_public_repo_summary_charts.ipynb.py": {
-        "path": "./src/03_public_repo_summary_charts.ipynb.py",
+    "01_table1_validation_tour.ipynb.py": {
+        "path": "./src/01_table1_validation_tour.ipynb.py",
         "file_dep": [
-            "./src/pull_fred.py",
-            "./src/pull_ofr_api_data.py",
-            "./src/pull_public_repo_data.py",
+            "./src/paper_benchmarks.py",
+            "./src/build_analysis_panel.py",
+            DATA_DIR / "rzone_analysis_panel.parquet",
+            OUTPUT_DIR / "table1_stats.csv",
         ],
-        "targets": [
-            OUTPUT_DIR / "repo_rate_spikes_and_relative_reserves_levels.png",
-            OUTPUT_DIR / "rates_relative_to_midpoint.png",
-        ],
+        "targets": [],
     },
 }
 
@@ -229,7 +309,7 @@ def task_run_notebooks():
     for notebook in notebook_tasks.keys():
         pyfile_path = Path(notebook_tasks[notebook]["path"])
         notebook_path = pyfile_path.with_suffix("")  # strips .py, leaves .ipynb
-        notebook_name = notebook_path.stem  # e.g. "01_example_notebook_interactive"
+        notebook_name = notebook_path.stem  # e.g. "01_data_tour"
         yield {
             "name": notebook,
             "actions": [
@@ -252,78 +332,6 @@ def task_run_notebooks():
         }
 # fmt: on
 
-###############################################################
-## Task below is for LaTeX compilation
-###############################################################
-
-
-def task_compile_latex_docs():
-    """Compile the LaTeX documents to PDFs"""
-    file_dep = [
-        "./reports/report_example.tex",
-        "./reports/my_article_header.sty",
-        "./reports/slides_example.tex",
-        "./reports/my_beamer_header.sty",
-        "./reports/my_common_header.sty",
-        "./reports/report_simple_example.tex",
-        "./reports/slides_simple_example.tex",
-        "./src/example_plot.py",
-        "./src/example_table.py",
-    ]
-    targets = [
-        "./reports/report_example.pdf",
-        "./reports/slides_example.pdf",
-        "./reports/report_simple_example.pdf",
-        "./reports/slides_simple_example.pdf",
-    ]
-
-    return {
-        "actions": [
-            # My custom LaTeX templates
-            "latexmk -xelatex -halt-on-error -cd ./reports/report_example.tex",  # Compile
-            "latexmk -xelatex -halt-on-error -c -cd ./reports/report_example.tex",  # Clean
-            "latexmk -xelatex -halt-on-error -cd ./reports/slides_example.tex",  # Compile
-            "latexmk -xelatex -halt-on-error -c -cd ./reports/slides_example.tex",  # Clean
-            # Simple templates based on small adjustments to Overleaf templates
-            "latexmk -xelatex -halt-on-error -cd ./reports/report_simple_example.tex",  # Compile
-            "latexmk -xelatex -halt-on-error -c -cd ./reports/report_simple_example.tex",  # Clean
-            "latexmk -xelatex -halt-on-error -cd ./reports/slides_simple_example.tex",  # Compile
-            "latexmk -xelatex -halt-on-error -c -cd ./reports/slides_simple_example.tex",  # Clean
-        ],
-        "targets": targets,
-        "file_dep": file_dep,
-        "clean": True,
-    }
-
-sphinx_targets = [
-    "./docs/index.html",
-]
-
-
-def task_build_chartbook_site():
-    """Compile Sphinx Docs"""
-    notebook_scripts = [
-        Path(notebook_tasks[notebook]["path"])
-        for notebook in notebook_tasks.keys()
-    ]
-    file_dep = [
-        "./README.md",
-        "./chartbook.toml",
-        *notebook_scripts,
-    ]
-
-    return {
-        "actions": [
-            "chartbook build -f",
-        ],  # Use docs as build destination
-        "targets": sphinx_targets,
-        "file_dep": file_dep,
-        "task_dep": [
-            "run_notebooks",
-        ],
-        "clean": True,
-    }
-
 
 def task_run_pytest():
     """Run pytest and save results to OUTPUT_DIR"""
@@ -331,8 +339,6 @@ def task_run_pytest():
     test_output = OUTPUT_DIR / "pytest_results.xml"
 
     def run_pytest():
-        import subprocess
-
         result = subprocess.run(
             ["pytest", f"--junitxml={test_output}"],
         )
