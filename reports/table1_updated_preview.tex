@@ -1,0 +1,30 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.62in]{geometry}
+\usepackage{booktabs}
+\usepackage{newtxtext,newtxmath}
+\usepackage{microtype}
+\pagestyle{plain}
+\begin{document}
+
+\noindent\textbf{Updated Table 1: Summary Statistics through Latest Available Year}
+
+\smallskip
+\noindent\footnotesize
+This table recalculates the descriptive statistics using all available data
+through 2025. The first crisis row combines BVX observations through 2016 with
+the IMF Laeven--Valencia (2026) systemic-banking-crisis chronology for
+2017--2025. Legacy crisis, crash, panic, and GDP series retain their own final
+available years; exact coverage is reported in
+\texttt{updated\_data\_coverage.csv}. Debt and price rows use complete
+sector-specific predictor pairs. Quantiles describe the expanded sample, but
+all updated R-Zone classifications continue to use the frozen historical
+cutoffs so that a post-publication observation has the same meaning as a
+historical one.
+
+\normalsize
+\medskip
+\begin{center}
+\input{../_output/table1_updated.tex}
+\end{center}
+
+\end{document}

@@ -1,0 +1,34 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.45in,landscape]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{newtxtext,newtxmath}
+\usepackage{microtype}
+\pagestyle{plain}
+\begin{document}
+
+\noindent\textbf{Table 4: Crisis Prediction with Debt Growth and Real Asset Appreciation by Sector}
+
+\smallskip
+\noindent\scriptsize
+The estimated country-fixed-effects linear probability model is
+\[
+ \mathrm{Crisis}_{i,t+1:t+h}
+ = \alpha_i^{(h)} + \beta^{(h)}\,\mathrm{High\ Debt\ Growth}_{i,t}
+ + \delta^{(h)}\,\mathrm{High\ Price\ Growth}_{i,t}
+ + \gamma^{(h)}\,\mathrm{R\mbox{-}Zone}_{i,t} + \varepsilon_{i,t}^{(h)}.
+\]
+The dependent variable equals one if a crisis occurs within the following
+one through four years. High growth indicators equal one in the highest
+sector-specific growth quantile; R-Zone is their interaction. Coefficients are
+percentage points. Brackets report t-statistics based on Driscoll--Kraay standard
+errors with lags 0, 3, 5, and 6. *, **, and *** denote significance at the 10\%,
+5\%, and 1\% levels. The sum row reports the model-implied effect when every
+included indicator equals one. These are reconstructed-sample estimates and may 
+not equal the published paper's values.
+
+\normalsize
+\medskip
+\input{../_output/table4_replication.tex}
+
+\end{document}

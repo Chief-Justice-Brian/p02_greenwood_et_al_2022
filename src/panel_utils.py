@@ -27,17 +27,14 @@ def delta3_within_source(source_df, value_column, is_log=False):
     -------
     DataFrame with columns country_iso3 | year | delta3
 
-    The 3-year change at year t uses the value at t-3 ONLY if the source has
-    an unbroken (t-3, t) pair; interior gaps produce NaN, never a change
-    computed across a hole.
+    The 3-year change at year t is defined only when that same source has
+    observations at both t and exactly t-3. Intermediate annual observations
+    are not required because the endpoint change remains well-defined.
     """
     frames = []
     for country, country_df in source_df.groupby("country_iso3"):
         # Reindex to a full year grid so .shift(3) means "exactly 3 years ago"
-        series = (
-            country_df.set_index("year")[value_column]
-            .sort_index()
-        )
+        series = country_df.set_index("year")[value_column].sort_index()
         full_grid = range(int(series.index.min()), int(series.index.max()) + 1)
         series = series.reindex(full_grid)
 
@@ -96,9 +93,7 @@ def annual_average_from_quarterly(quarterly_df, value_column="value"):
     working = quarterly_df.copy()
     working["year"] = working["period"].str.slice(0, 4).astype(int)
     annual = (
-        working.groupby(["country_iso3", "year"])[value_column]
-        .mean()
-        .reset_index()
+        working.groupby(["country_iso3", "year"])[value_column].mean().reset_index()
     )
     return annual
 

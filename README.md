@@ -40,6 +40,91 @@ Run the unit tests alone with:
 pytest
 ```
 
+The main generated artifacts are:
+
+- `_data/rzone_analysis_panel.parquet`: unified 42-country historical and
+  post-2016 panel;
+- `_output/table1_stats.csv` and `_output/table1_cutoffs.csv`: replication
+  validation;
+- `_output/table3_crisis_probabilities.csv`: Table 3 quantile cells, crisis
+  frequencies, and differences from the median cell;
+- `_output/figure1_event_history.pdf`: combined business and household
+  historical R-zone event-history panels;
+- `_output/table4_baseline_*.csv`: country-fixed-effects baseline models;
+- `_output/post_2016_rzone_tracker.csv`: classifications using frozen
+  historical cutoffs;
+- `_output/fragility_*.csv`, `_output/dynamic_*.csv`, and
+  `_output/missed_crisis_fragility.csv`: extension results.
+- `_output/replication_validation.csv`: every published benchmark, replicated
+  value, documented tolerance, numerical gap, and pass/fail result for Tables
+  1, 3, and 4 and Figures 1 and 3.
+
+The historical replication is kept separate from the post-publication update.
+Build the updated exhibits with:
+
+```bash
+doit analysis:updated
+doit compile_latex:table1_updated_preview \
+     compile_latex:table3_updated_preview \
+     compile_latex:table4_updated_preview \
+     compile_latex:figure3_updated_preview
+```
+
+The updated task writes separately labelled Table 1, Table 3, Table 4,
+Figure 1, and Figure 3 files (names containing `updated`) plus
+`_output/updated_data_coverage.csv`. Predictor and R-Zone series extend through
+2025. Crisis outcomes use BVX through 2016 and Laeven--Valencia (2026) through
+2025, so the last valid forecast origins are 2024, 2023, 2022, and 2021 for
+horizons one through four. Historical R-Zone thresholds remain frozen.
+
+The required original data-understanding exhibit is separate from every paper
+replication. Build and open its captioned LaTeX report with:
+
+```bash
+doit analysis:data_overview compile_latex:data_overview
+open reports/data_overview.pdf
+```
+
+It contains an original summary-statistics table comparing 1950–2012 with
+2013–2025 and an original three-panel chart of predictor coverage and the joint
+growth distributions behind the R-Zone classification.
+
+Build the single narrative report containing the historical replication,
+post-publication update, original data overview, and extensions with:
+
+```bash
+doit analysis:final_report compile_latex:final_report
+open reports/final_report.pdf
+```
+
+The report contains no code listings. Its text explains the project's nature,
+data sources, methods, successful replication results, remaining discrepancies,
+modern-update limitations, and the interpretation of every included table and
+figure.
+
+An executable Jupyter notebook provides an HW-guide-style tour of the cleaned
+panel and analysis. Build and open it with:
+
+```bash
+doit run_notebooks:01_predictable_financial_crises_project_tour.ipynb.py
+open _output/01_predictable_financial_crises_project_tour.html
+```
+
+The notebook covers panel keys and coverage, source splicing, sample flags,
+three-year growth, frozen quantile thresholds, R-Zone assignment, descriptive
+cells, fixed-effects regressions, the update through 2025, extensions, and the
+replication-tolerance audit.
+
+Run the paper-benchmark validation gate directly with:
+
+```bash
+doit analysis:validation
+pytest -q src/test_paper_exhibits.py
+```
+
+See `docs_src/project_overview/methodology.md` for the sample, splicing, and
+missing-data rules.
+
 ## Data Sources
 
 With one exception, every source in our pipeline is one the paper itself
@@ -79,6 +164,7 @@ IMF stopped collecting share prices in 2017.
 | Source | Role in the paper | Role here | Pull script |
 |---|---|---|---|
 | Baron–Verner–Xiong (2021), Harvard Dataverse | Baseline crisis chronology | Same | `src/pull_bvx_crises.py` |
+| Laeven–Valencia (2026), IMF WP 26/94 | — | Systemic-crisis chronology update, 2017–2025 | encoded and documented in `src/updated_crisis_chronology.py` |
 | IMF Global Debt Database | Credit: **primary** | Same | `src/pull_imf_gdd.py` |
 | BIS Total Credit Statistics | Credit: used for Thailand | Credit supplement; carries the monitor forward | `src/pull_bis_total_credit.py` |
 | IMF share price indices (former IFS) | Equity: their stated GFD fallback | Equity **primary**, 1950–2016 | `src/pull_imf_equity.py` |

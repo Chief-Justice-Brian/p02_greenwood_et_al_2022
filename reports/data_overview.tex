@@ -1,0 +1,57 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.68in]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{newtxtext,newtxmath}
+\usepackage{microtype}
+\pagestyle{plain}
+\begin{document}
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Original summary statistics for the underlying predictor
+data.} Each row uses country-years in which both sector-specific predictors
+are observed. Coverage is the percentage of the balanced 42-country period
+that has a complete pair; debt and real asset-price growth are three-year
+changes. The correlation and R-Zone share describe whether extreme debt and
+price growth occur jointly. The main takeaway is that later data have broader
+country coverage but substantially lower average debt growth and fewer joint
+upper-tail observations than the historical estimation years. This change in
+the predictor distribution helps explain why updated R-Zone frequencies and
+crisis estimates need not equal their historical counterparts.}
+\label{tab:data-overview}
+\small
+\input{../_output/data_overview_summary.tex}
+
+\medskip
+\begin{minipage}{0.97\linewidth}
+\footnotesize
+\textit{Notes:} $N$ is the number of complete country-year predictor pairs.
+Coverage divides $N$ by 42 times the number of calendar years in the displayed
+period. Debt growth is the three-year percentage-point change in debt/GDP;
+price growth is 100 times the three-year log change in the relevant real asset
+price. Corr. is the within-period Pearson correlation. R-Zone percentages use
+the frozen historical Q80 debt and T66.7 price cutoffs.
+\end{minipage}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.86\textwidth]{../_output/data_overview_figure.jpg}
+\caption{\textbf{Coverage and joint predictor distributions behind the
+R-Zone classifications.} Panel A shows how many of the 42 countries have both
+required predictors in each year; the shaded region begins after the common
+historical forecast-origin window. Panels B and C plot every complete later
+country-year pair and identify observations exceeding both frozen historical
+thresholds. The reader should take away two features: coverage expands sharply
+over time, so annual aggregates are based on changing country counts, and most
+later observations lie outside the joint upper-right tail. R-Zones are
+therefore genuinely rare combinations of rapid debt and asset-price growth,
+not merely years in which either series is high on its own. Axes in the scatter
+panels are limited to the first and 99th percentiles for readability; the table
+uses all untrimmed observations.}
+\label{fig:data-overview}
+\end{figure}
+
+\end{document}
