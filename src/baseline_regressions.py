@@ -7,6 +7,7 @@ import pandas as pd
 from linearmodels.panel import PanelOLS
 from scipy.stats import t as student_t
 
+from build_analysis_panel import load_analysis_panel
 from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
@@ -89,7 +90,7 @@ def run_baseline_regressions(panel):
 
 if __name__ == "__main__":
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    panel = pd.read_parquet(DATA_DIR / "rzone_analysis_panel.parquet")
+    panel = load_analysis_panel(DATA_DIR)
     coefficients, models = run_baseline_regressions(panel)
     coefficients.to_csv(OUTPUT_DIR / "table4_baseline_coefficients.csv", index=False)
     models.to_csv(OUTPUT_DIR / "table4_baseline_models.csv", index=False)

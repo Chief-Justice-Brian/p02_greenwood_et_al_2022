@@ -11,9 +11,13 @@ from panel_utils import (
     log_positive,
     splice_by_priority,
 )
+from pull_bis_property_prices import load_bis_property_prices
+from pull_jst_macrohistory import load_jst_macrohistory
+from pull_oecd_house_prices import load_oecd_house_prices
 from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
+HOUSE_PRICE_PANEL_FILENAME = "house_price_panel.parquet"
 
 
 def _bis_real_levels(bis):
@@ -77,11 +81,16 @@ def build_house_price_panel(bis, oecd, jst):
     return result
 
 
+def load_house_price_panel(data_dir=DATA_DIR):
+    """Load the spliced real house-price-growth panel: one row per (country, year)."""
+    return pd.read_parquet(Path(data_dir) / HOUSE_PRICE_PANEL_FILENAME)
+
+
 if __name__ == "__main__":
     panel = build_house_price_panel(
-        pd.read_parquet(DATA_DIR / "bis_property_prices.parquet"),
-        pd.read_parquet(DATA_DIR / "oecd_house_prices.parquet"),
-        pd.read_parquet(DATA_DIR / "jst_macrohistory.parquet"),
+        load_bis_property_prices(DATA_DIR),
+        load_oecd_house_prices(DATA_DIR),
+        load_jst_macrohistory(DATA_DIR),
     )
-    panel.to_parquet(DATA_DIR / "house_price_panel.parquet", index=False)
+    panel.to_parquet(DATA_DIR / HOUSE_PRICE_PANEL_FILENAME, index=False)
     print(f"Saved house_price_panel.parquet: {panel.shape}")

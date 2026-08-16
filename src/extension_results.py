@@ -8,6 +8,7 @@ from linearmodels.panel import PanelOLS
 from sklearn.metrics import roc_auc_score
 
 from baseline_regressions import DK_BANDWIDTH
+from build_analysis_panel import load_analysis_panel
 from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
@@ -227,7 +228,7 @@ def case_study_2023(panel):
 
 if __name__ == "__main__":
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    panel = pd.read_parquet(DATA_DIR / "rzone_analysis_panel.parquet")
+    panel = load_analysis_panel(DATA_DIR)
 
     fragility_coefficients, fragility_models = run_fragility_regressions(panel)
     fragility_coefficients.to_csv(

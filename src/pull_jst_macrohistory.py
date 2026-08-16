@@ -47,6 +47,7 @@ import requests
 from settings import config
 
 DATA_DIR = config("DATA_DIR")
+JST_MACROHISTORY_FILENAME = "jst_macrohistory.parquet"
 
 # Canonical R6 .dta link from https://www.macrohistory.net/database/
 # (the site 302-redirects to a jimcontent CDN URL; requests follows it)
@@ -67,7 +68,7 @@ def pull_jst_macrohistory(url=JST_DTA_URL):
 
 def load_jst_macrohistory(data_dir=DATA_DIR):
     """Load the JST panel: one row per (country, year)."""
-    return pd.read_parquet(Path(data_dir) / "jst_macrohistory.parquet")
+    return pd.read_parquet(Path(data_dir) / JST_MACROHISTORY_FILENAME)
 
 
 if __name__ == "__main__":
@@ -75,7 +76,7 @@ if __name__ == "__main__":
     data_dir.mkdir(parents=True, exist_ok=True)
 
     jst_df = pull_jst_macrohistory()
-    jst_df.to_parquet(data_dir / "jst_macrohistory.parquet")
+    jst_df.to_parquet(data_dir / JST_MACROHISTORY_FILENAME)
 
     n_countries = jst_df["country"].nunique()
     year_min, year_max = int(jst_df["year"].min()), int(jst_df["year"].max())

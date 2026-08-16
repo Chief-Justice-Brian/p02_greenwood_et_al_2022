@@ -5,12 +5,13 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from build_analysis_panel import analysis_panel_path, load_analysis_panel
 from settings import config
 from table1_summary_stats import calculate_quantile_comparison, calculate_table1
 
 DATA_DIR = Path(config("DATA_DIR"))
 OUTPUT_DIR = Path(config("OUTPUT_DIR"))
-PANEL_PATH = DATA_DIR / "rzone_analysis_panel.parquet"
+PANEL_PATH = analysis_panel_path(DATA_DIR)
 
 pytestmark = pytest.mark.skipif(
     not PANEL_PATH.exists(), reason="analysis panel not built yet -- run `doit` first"
@@ -19,7 +20,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def analysis_panel():
-    return pd.read_parquet(PANEL_PATH)
+    return load_analysis_panel(DATA_DIR)
 
 
 def test_analysis_panel_key_and_common_horizon(analysis_panel):

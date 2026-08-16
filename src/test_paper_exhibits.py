@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from build_analysis_panel import analysis_panel_path, load_analysis_panel
 from replication_validation import (
     validate_figure1,
     validate_figure3,
@@ -16,7 +17,7 @@ from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
 OUTPUT_DIR = Path(config("OUTPUT_DIR"))
-PANEL_PATH = DATA_DIR / "rzone_analysis_panel.parquet"
+PANEL_PATH = analysis_panel_path(DATA_DIR)
 
 REQUIRED = [
     PANEL_PATH,
@@ -70,7 +71,7 @@ def test_table4_all_coefficients_and_model_statistics_within_tolerances():
 
 
 def test_figure1_underlying_event_series_within_documented_tolerances():
-    _assert_all_within_tolerance(validate_figure1(pd.read_parquet(PANEL_PATH)))
+    _assert_all_within_tolerance(validate_figure1(load_analysis_panel(DATA_DIR)))
 
 
 def test_figure3_underlying_annual_series_within_documented_tolerances():

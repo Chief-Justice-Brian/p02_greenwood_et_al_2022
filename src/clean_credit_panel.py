@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from clean_macro_deflators import load_macro_deflators
 from country_sample import BIS_ISO2_TO_ISO3, GHSS_COUNTRIES
 from panel_utils import (
     annual_average_from_quarterly,
@@ -17,9 +18,13 @@ from panel_utils import (
     log_positive,
     splice_by_priority,
 )
+from pull_bis_total_credit import load_bis_total_credit
+from pull_imf_gdd import load_imf_gdd
+from pull_jst_macrohistory import load_jst_macrohistory
 from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
+CREDIT_PANEL_FILENAME = "credit_panel.parquet"
 
 
 def _gdd_levels(gdd, indicator):
@@ -146,12 +151,17 @@ def build_credit_panel(gdd, bis, jst, macro):
     return result.sort_values(["country_iso3", "year"]).reset_index(drop=True)
 
 
+def load_credit_panel(data_dir=DATA_DIR):
+    """Load the spliced credit-growth panel: one row per (country, year)."""
+    return pd.read_parquet(Path(data_dir) / CREDIT_PANEL_FILENAME)
+
+
 if __name__ == "__main__":
     panel = build_credit_panel(
-        pd.read_parquet(DATA_DIR / "imf_gdd.parquet"),
-        pd.read_parquet(DATA_DIR / "bis_total_credit.parquet"),
-        pd.read_parquet(DATA_DIR / "jst_macrohistory.parquet"),
-        pd.read_parquet(DATA_DIR / "macro_deflators.parquet"),
+        load_imf_gdd(DATA_DIR),
+        load_bis_total_credit(DATA_DIR),
+        load_jst_macrohistory(DATA_DIR),
+        load_macro_deflators(DATA_DIR),
     )
-    panel.to_parquet(DATA_DIR / "credit_panel.parquet", index=False)
+    panel.to_parquet(DATA_DIR / CREDIT_PANEL_FILENAME, index=False)
     print(f"Saved credit_panel.parquet: {panel.shape}")

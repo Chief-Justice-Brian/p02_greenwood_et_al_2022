@@ -10,6 +10,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from build_analysis_panel import load_analysis_panel
 from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
@@ -219,7 +220,7 @@ def plot_data_overview(panel: pd.DataFrame, output_stem: Path) -> None:
 
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    panel = pd.read_parquet(DATA_DIR / "rzone_analysis_panel.parquet")
+    panel = load_analysis_panel(DATA_DIR)
     summary = calculate_data_overview(panel)
     summary.to_csv(OUTPUT_DIR / "data_overview_summary.csv", index=False)
     (OUTPUT_DIR / "data_overview_summary.tex").write_text(

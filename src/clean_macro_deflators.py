@@ -13,9 +13,12 @@ import numpy as np
 import pandas as pd
 
 from country_sample import GHSS_COUNTRIES
+from pull_jst_macrohistory import load_jst_macrohistory
+from pull_worldbank_wdi import load_worldbank_wdi
 from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
+MACRO_DEFLATORS_FILENAME = "macro_deflators.parquet"
 
 
 def _rebase_supplement(primary, supplement):
@@ -106,12 +109,17 @@ def build_macro_panel(wdi, jst):
     return result.sort_values(["country_iso3", "year"]).reset_index(drop=True)
 
 
+def load_macro_deflators(data_dir=DATA_DIR):
+    """Load the CPI and nominal-GDP deflator panel: one row per (country, year)."""
+    return pd.read_parquet(Path(data_dir) / MACRO_DEFLATORS_FILENAME)
+
+
 if __name__ == "__main__":
     panel = build_macro_panel(
-        pd.read_parquet(DATA_DIR / "worldbank_wdi.parquet"),
-        pd.read_parquet(DATA_DIR / "jst_macrohistory.parquet"),
+        load_worldbank_wdi(DATA_DIR),
+        load_jst_macrohistory(DATA_DIR),
     )
-    panel.to_parquet(DATA_DIR / "macro_deflators.parquet", index=False)
+    panel.to_parquet(DATA_DIR / MACRO_DEFLATORS_FILENAME, index=False)
     print(
         "Saved macro_deflators.parquet: "
         f"{panel.shape}, {panel.country_iso3.nunique()} countries, "

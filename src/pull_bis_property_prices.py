@@ -60,6 +60,7 @@ import requests
 from settings import config
 
 DATA_DIR = config("DATA_DIR")
+BIS_PROPERTY_PRICES_FILENAME = "bis_property_prices.parquet"
 
 BIS_PROPERTY_ZIP_URL = "https://data.bis.org/static/bulk/WS_SPP_csv_col.zip"
 
@@ -102,7 +103,7 @@ def pull_bis_property_prices(url=BIS_PROPERTY_ZIP_URL):
 
 def load_bis_property_prices(data_dir=DATA_DIR):
     """Load the BIS property price long panel (all series, quarterly)."""
-    return pd.read_parquet(Path(data_dir) / "bis_property_prices.parquet")
+    return pd.read_parquet(Path(data_dir) / BIS_PROPERTY_PRICES_FILENAME)
 
 
 if __name__ == "__main__":
@@ -110,7 +111,7 @@ if __name__ == "__main__":
     data_dir.mkdir(parents=True, exist_ok=True)
 
     bis_property_df = pull_bis_property_prices()
-    bis_property_df.to_parquet(data_dir / "bis_property_prices.parquet")
+    bis_property_df.to_parquet(data_dir / BIS_PROPERTY_PRICES_FILENAME)
 
     n_areas = bis_property_df["ref_area"].nunique()
     print(f"Saved bis_property_prices.parquet: {bis_property_df.shape}, {n_areas} reference areas")

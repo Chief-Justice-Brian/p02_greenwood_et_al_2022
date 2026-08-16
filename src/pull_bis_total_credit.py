@@ -61,6 +61,7 @@ import requests
 from settings import config
 
 DATA_DIR = config("DATA_DIR")
+BIS_TOTAL_CREDIT_FILENAME = "bis_total_credit.parquet"
 
 BIS_TOTAL_CREDIT_ZIP_URL = "https://data.bis.org/static/bulk/WS_TC_csv_col.zip"
 
@@ -109,7 +110,7 @@ def pull_bis_total_credit(url=BIS_TOTAL_CREDIT_ZIP_URL):
 
 def load_bis_total_credit(data_dir=DATA_DIR):
     """Load the BIS total credit long panel (all series, quarterly)."""
-    return pd.read_parquet(Path(data_dir) / "bis_total_credit.parquet")
+    return pd.read_parquet(Path(data_dir) / BIS_TOTAL_CREDIT_FILENAME)
 
 
 if __name__ == "__main__":
@@ -117,7 +118,7 @@ if __name__ == "__main__":
     data_dir.mkdir(parents=True, exist_ok=True)
 
     bis_credit_df = pull_bis_total_credit()
-    bis_credit_df.to_parquet(data_dir / "bis_total_credit.parquet")
+    bis_credit_df.to_parquet(data_dir / BIS_TOTAL_CREDIT_FILENAME)
 
     n_countries = bis_credit_df["borrowers_country"].nunique()
     print(f"Saved bis_total_credit.parquet: {bis_credit_df.shape}, {n_countries} borrower countries")

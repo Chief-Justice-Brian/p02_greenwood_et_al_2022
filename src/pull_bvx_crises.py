@@ -57,6 +57,7 @@ References
 """
 
 import io
+import time
 import zipfile
 from pathlib import Path
 
@@ -66,6 +67,8 @@ import requests
 from settings import config
 
 DATA_DIR = config("DATA_DIR")
+BVX_CRISIS_LIST_FILENAME = "bvx_crisis_list.parquet"
+BVX_ANNUAL_REGDATA_FILENAME = "bvx_annual_regdata.parquet"
 
 # Direct download of "replication kit.zip" (file id 4095458) from the
 # Dataverse dataset doi:10.7910/DVN/ECC9GE
@@ -76,11 +79,32 @@ CRISIS_LIST_MEMBER_KEYWORD = "Narrative Crisis List"
 ANNUAL_REGDATA_MEMBER_SUFFIX = "BVX_annual_regdata.dta"
 
 
-def pull_bvx_replication_kit(url=BVX_ZIP_URL):
-    """Download the BVX replication kit zip and return it as raw bytes."""
-    response = requests.get(url, timeout=300)
-    response.raise_for_status()
-    return response.content
+def pull_bvx_replication_kit(url=BVX_ZIP_URL, max_attempts=6, retry_wait_seconds=20):
+    """Download the BVX replication kit zip and return it as raw bytes.
+
+    Dataverse keeps this file in archival storage, so a request can be
+    answered with "202 Accepted" and an empty body while the file is being
+    restored -- and ``raise_for_status()`` treats any 2xx as success.  Only
+    a 200 response whose payload starts with the zip magic bytes ``PK`` is
+    accepted here; anything else is retried, then reported loudly, so a
+    non-zip payload can never reach the parser or be written to disk.
+    """
+    last_status = None
+    last_size = None
+    for attempt in range(max_attempts):
+        if attempt > 0:
+            time.sleep(retry_wait_seconds)
+        response = requests.get(url, timeout=300)
+        response.raise_for_status()
+        last_status = response.status_code
+        last_size = len(response.content)
+        if response.status_code == 200 and response.content[:2] == b"PK":
+            return response.content
+    raise RuntimeError(
+        f"Dataverse did not serve the BVX zip after {max_attempts} attempts "
+        f"(last response: status {last_status}, {last_size} bytes). The file "
+        "is likely mid-restore from archival storage; re-run doit later."
+    )
 
 
 def parse_bvx_zip(zip_bytes):
@@ -112,12 +136,12 @@ def parse_bvx_zip(zip_bytes):
 
 def load_bvx_crisis_list(data_dir=DATA_DIR):
     """Load the parsed BVX crisis episode list (one row per episode)."""
-    return pd.read_parquet(Path(data_dir) / "bvx_crisis_list.parquet")
+    return pd.read_parquet(Path(data_dir) / BVX_CRISIS_LIST_FILENAME)
 
 
 def load_bvx_annual_regdata(data_dir=DATA_DIR):
     """Load the parsed BVX country-year panel."""
-    return pd.read_parquet(Path(data_dir) / "bvx_annual_regdata.parquet")
+    return pd.read_parquet(Path(data_dir) / BVX_ANNUAL_REGDATA_FILENAME)
 
 
 if __name__ == "__main__":
@@ -131,8 +155,8 @@ if __name__ == "__main__":
     raw_zip_path.write_bytes(zip_bytes)
 
     crisis_list_df, annual_regdata_df = parse_bvx_zip(zip_bytes)
-    crisis_list_df.to_parquet(data_dir / "bvx_crisis_list.parquet")
-    annual_regdata_df.to_parquet(data_dir / "bvx_annual_regdata.parquet")
+    crisis_list_df.to_parquet(data_dir / BVX_CRISIS_LIST_FILENAME)
+    annual_regdata_df.to_parquet(data_dir / BVX_ANNUAL_REGDATA_FILENAME)
 
     print(f"Saved bvx_crisis_list.parquet: {crisis_list_df.shape}")
     print(f"Saved bvx_annual_regdata.parquet: {annual_regdata_df.shape}")

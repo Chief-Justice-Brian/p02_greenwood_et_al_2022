@@ -31,14 +31,14 @@ bare ``pytest`` on a fresh clone reports no false alarms.
 
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 import paper_benchmarks as bench
+from build_analysis_panel import analysis_panel_path, load_analysis_panel
 from settings import config
 
 DATA_DIR = config("DATA_DIR")
-PANEL_PATH = Path(DATA_DIR) / "rzone_analysis_panel.parquet"
+PANEL_PATH = analysis_panel_path(Path(DATA_DIR))
 
 pytestmark = pytest.mark.skipif(
     not PANEL_PATH.exists(),
@@ -49,7 +49,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture(scope="module")
 def paper_sample():
     """The country-years satisfying the paper's baseline sample rule."""
-    panel = pd.read_parquet(PANEL_PATH)
+    panel = load_analysis_panel(Path(DATA_DIR))
     return panel[panel["in_paper_sample"]]
 
 

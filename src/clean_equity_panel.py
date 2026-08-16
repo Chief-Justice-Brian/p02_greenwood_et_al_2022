@@ -5,11 +5,16 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from clean_macro_deflators import load_macro_deflators
 from country_sample import GHSS_COUNTRIES
 from panel_utils import delta3_within_source, log_positive, splice_by_priority
+from pull_imf_equity import load_imf_equity
+from pull_jst_macrohistory import load_jst_macrohistory
+from pull_oecd_share_prices import load_oecd_share_prices
 from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
+EQUITY_PANEL_FILENAME = "equity_panel.parquet"
 
 
 def select_imf_series(imf):
@@ -95,12 +100,17 @@ def build_equity_panel(imf, jst, oecd, macro):
     return result
 
 
+def load_equity_panel(data_dir=DATA_DIR):
+    """Load the spliced real equity-growth panel: one row per (country, year)."""
+    return pd.read_parquet(Path(data_dir) / EQUITY_PANEL_FILENAME)
+
+
 if __name__ == "__main__":
     panel = build_equity_panel(
-        pd.read_parquet(DATA_DIR / "imf_equity.parquet"),
-        pd.read_parquet(DATA_DIR / "jst_macrohistory.parquet"),
-        pd.read_parquet(DATA_DIR / "oecd_share_prices.parquet"),
-        pd.read_parquet(DATA_DIR / "macro_deflators.parquet"),
+        load_imf_equity(DATA_DIR),
+        load_jst_macrohistory(DATA_DIR),
+        load_oecd_share_prices(DATA_DIR),
+        load_macro_deflators(DATA_DIR),
     )
-    panel.to_parquet(DATA_DIR / "equity_panel.parquet", index=False)
+    panel.to_parquet(DATA_DIR / EQUITY_PANEL_FILENAME, index=False)
     print(f"Saved equity_panel.parquet: {panel.shape}")

@@ -15,6 +15,7 @@ import pandas as pd
 from scipy.stats import t as student_t
 
 from baseline_regressions import DK_BANDWIDTH, _fit
+from build_analysis_panel import load_analysis_panel
 from descriptive_results import (
     combine_event_history_panels,
     plot_event_history,
@@ -443,9 +444,7 @@ def build_updated_figures(panel: pd.DataFrame) -> None:
 
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    panel = add_updated_crisis_series(
-        pd.read_parquet(DATA_DIR / "rzone_analysis_panel.parquet")
-    )
+    panel = add_updated_crisis_series(load_analysis_panel(DATA_DIR))
     coverage = updated_coverage(panel)
     coverage.to_csv(OUTPUT_DIR / "updated_data_coverage.csv", index=False)
 

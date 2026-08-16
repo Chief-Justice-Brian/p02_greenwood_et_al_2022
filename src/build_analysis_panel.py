@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pandas as pd
 
+from clean_credit_panel import load_credit_panel
+from clean_crisis_chronologies import load_crisis_panel
+from clean_equity_panel import load_equity_panel
+from clean_house_price_panel import load_house_price_panel
 from country_sample import GHSS_COUNTRIES
+from pull_jst_macrohistory import load_jst_macrohistory
 from rzone_features import (
     add_future_event_windows,
     assign_bucket,
@@ -19,6 +24,7 @@ END_YEAR = config("END_DATE").year
 PAPER_SAMPLE_START = config("PAPER_SAMPLE_START")
 PAPER_SAMPLE_END = config("PAPER_SAMPLE_END")
 LAST_COMMON_FORECAST_YEAR = PAPER_SAMPLE_END - 4
+ANALYSIS_PANEL_FILENAME = "rzone_analysis_panel.parquet"
 
 
 def _base_grid():
@@ -129,15 +135,25 @@ def build_analysis_panel(crisis, credit, equity, house, jst):
     return panel.sort_values(["country_iso3", "year"]).reset_index(drop=True)
 
 
+def analysis_panel_path(data_dir=DATA_DIR):
+    """Path of the combined analysis panel parquet."""
+    return Path(data_dir) / ANALYSIS_PANEL_FILENAME
+
+
+def load_analysis_panel(data_dir=DATA_DIR):
+    """Load the combined R-zone analysis panel: one row per (country, year)."""
+    return pd.read_parquet(analysis_panel_path(data_dir))
+
+
 if __name__ == "__main__":
     panel = build_analysis_panel(
-        pd.read_parquet(DATA_DIR / "crisis_panel.parquet"),
-        pd.read_parquet(DATA_DIR / "credit_panel.parquet"),
-        pd.read_parquet(DATA_DIR / "equity_panel.parquet"),
-        pd.read_parquet(DATA_DIR / "house_price_panel.parquet"),
-        pd.read_parquet(DATA_DIR / "jst_macrohistory.parquet"),
+        load_crisis_panel(DATA_DIR),
+        load_credit_panel(DATA_DIR),
+        load_equity_panel(DATA_DIR),
+        load_house_price_panel(DATA_DIR),
+        load_jst_macrohistory(DATA_DIR),
     )
-    panel.to_parquet(DATA_DIR / "rzone_analysis_panel.parquet", index=False)
+    panel.to_parquet(analysis_panel_path(DATA_DIR), index=False)
     print(
         "Saved rzone_analysis_panel.parquet: "
         f"{panel.shape}; common sample={panel.in_paper_sample.sum()}, "

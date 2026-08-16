@@ -39,6 +39,7 @@ import requests
 from settings import config
 
 DATA_DIR = config("DATA_DIR")
+WORLDBANK_WDI_FILENAME = "worldbank_wdi.parquet"
 
 WORLDBANK_API_BASE = "https://api.worldbank.org/v2/country/all/indicator"
 
@@ -100,7 +101,7 @@ def pull_worldbank_wdi(indicator_codes=tuple(WDI_INDICATORS)):
 
 def load_worldbank_wdi(data_dir=DATA_DIR):
     """Load the WDI long panel: country_iso3 | year | indicator | value."""
-    return pd.read_parquet(Path(data_dir) / "worldbank_wdi.parquet")
+    return pd.read_parquet(Path(data_dir) / WORLDBANK_WDI_FILENAME)
 
 
 if __name__ == "__main__":
@@ -108,7 +109,7 @@ if __name__ == "__main__":
     data_dir.mkdir(parents=True, exist_ok=True)
 
     wdi_df = pull_worldbank_wdi()
-    wdi_df.to_parquet(data_dir / "worldbank_wdi.parquet")
+    wdi_df.to_parquet(data_dir / WORLDBANK_WDI_FILENAME)
 
     coverage = wdi_df.groupby("indicator")["country_iso3"].nunique()
     print(f"Saved worldbank_wdi.parquet: {wdi_df.shape}")

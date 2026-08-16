@@ -14,10 +14,10 @@ import pandas as pd
 from linearmodels.panel import PooledOLS
 
 from baseline_regressions import DK_BANDWIDTH
+from build_analysis_panel import load_analysis_panel
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PANEL_PATH = ROOT / "_data" / "rzone_analysis_panel.parquet"
 RESULTS_PATH = ROOT / "_output" / "table3_crisis_probabilities.csv"
 LATEX_PATH = ROOT / "_output" / "table3_replication.tex"
 
@@ -230,7 +230,7 @@ def build_latex(data: pd.DataFrame) -> str:
 
 
 def main() -> None:
-    panel = pd.read_parquet(PANEL_PATH)
+    panel = load_analysis_panel()
     results = calculate_table3(panel)
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     results.to_csv(RESULTS_PATH, index=False)

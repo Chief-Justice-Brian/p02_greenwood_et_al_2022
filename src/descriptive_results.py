@@ -6,6 +6,7 @@ from textwrap import fill
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from build_analysis_panel import load_analysis_panel
 from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
@@ -229,6 +230,9 @@ def plot_event_history(
         historical[crisis_column].eq(1) & historical["country_iso3"].isin(countries)
     ]
 
+    # "J-Zone" is not a typo: the paper's published Figure 1 legend reads
+    # "J-Zone (Bus.)" / "J-Zone (HH.)" (WP 20-130 pp. 55-56), even though the
+    # text calls it the R-Zone. We replicate the exhibit as published.
     rzone_label = "J-Zone (Bus.)" if sector == "business" else "J-Zone (HH.)"
     ax.scatter(
         crises["year"],
@@ -349,7 +353,7 @@ def combine_event_history_panels(
 
 if __name__ == "__main__":
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    panel = pd.read_parquet(DATA_DIR / "rzone_analysis_panel.parquet")
+    panel = load_analysis_panel(DATA_DIR)
     quantile_cell_results(panel).to_csv(
         OUTPUT_DIR / "table3_cell_frequencies_raw.csv", index=False
     )

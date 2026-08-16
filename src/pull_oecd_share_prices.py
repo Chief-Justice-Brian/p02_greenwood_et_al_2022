@@ -55,6 +55,7 @@ import requests
 from settings import config
 
 DATA_DIR = config("DATA_DIR")
+OECD_SHARE_PRICES_FILENAME = "oecd_share_prices.parquet"
 
 OECD_SHARE_PRICES_URL = (
     "https://sdmx.oecd.org/public/rest/data/"
@@ -86,7 +87,7 @@ def pull_oecd_share_prices(url=OECD_SHARE_PRICES_URL):
 
 def load_oecd_share_prices(data_dir=DATA_DIR):
     """Load the OECD share price panel: country_iso3 | year | value."""
-    return pd.read_parquet(Path(data_dir) / "oecd_share_prices.parquet")
+    return pd.read_parquet(Path(data_dir) / OECD_SHARE_PRICES_FILENAME)
 
 
 if __name__ == "__main__":
@@ -94,7 +95,7 @@ if __name__ == "__main__":
     data_dir.mkdir(parents=True, exist_ok=True)
 
     share_df = pull_oecd_share_prices()
-    share_df.to_parquet(data_dir / "oecd_share_prices.parquet")
+    share_df.to_parquet(data_dir / OECD_SHARE_PRICES_FILENAME)
 
     n_countries = share_df["country_iso3"].nunique()
     year_min, year_max = share_df["year"].min(), share_df["year"].max()

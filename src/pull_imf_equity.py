@@ -52,6 +52,7 @@ import requests
 from settings import config
 
 DATA_DIR = config("DATA_DIR")
+IMF_EQUITY_FILENAME = "imf_equity.parquet"
 
 IMF_MFS_FMP_URL = (
     "https://api.imf.org/external/sdmx/2.1/data/IMF.STA,MFS_FMP/"
@@ -89,7 +90,7 @@ def pull_imf_equity(url=IMF_MFS_FMP_URL):
 
 def load_imf_equity(data_dir=DATA_DIR):
     """Load the IMF share price long panel: country_iso3 | indicator | year | value."""
-    return pd.read_parquet(Path(data_dir) / "imf_equity.parquet")
+    return pd.read_parquet(Path(data_dir) / IMF_EQUITY_FILENAME)
 
 
 if __name__ == "__main__":
@@ -97,7 +98,7 @@ if __name__ == "__main__":
     data_dir.mkdir(parents=True, exist_ok=True)
 
     equity_df = pull_imf_equity()
-    equity_df.to_parquet(data_dir / "imf_equity.parquet")
+    equity_df.to_parquet(data_dir / IMF_EQUITY_FILENAME)
 
     n_countries = equity_df["country_iso3"].nunique()
     year_min, year_max = equity_df["year"].min(), equity_df["year"].max()

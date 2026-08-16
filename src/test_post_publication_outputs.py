@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from build_analysis_panel import analysis_panel_path, load_analysis_panel
 from data_overview import calculate_data_overview
 from figure3_global_rzone import annual_rzone_fraction
 from settings import config
@@ -17,7 +18,7 @@ from updated_results import LATEST_PREDICTOR_YEAR, updated_coverage, updated_tab
 
 DATA_DIR = Path(config("DATA_DIR"))
 OUTPUT_DIR = Path(config("OUTPUT_DIR"))
-PANEL_PATH = DATA_DIR / "rzone_analysis_panel.parquet"
+PANEL_PATH = analysis_panel_path(DATA_DIR)
 FINAL_REPORT_SOURCE = (
     Path(__file__).resolve().parents[1] / "reports" / "final_report.tex"
 )
@@ -29,7 +30,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def updated_panel():
-    return add_updated_crisis_series(pd.read_parquet(PANEL_PATH))
+    return add_updated_crisis_series(load_analysis_panel(DATA_DIR))
 
 
 def test_updated_chronology_preserves_bvx_and_has_explicit_extension(updated_panel):

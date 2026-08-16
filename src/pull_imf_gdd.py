@@ -45,6 +45,7 @@ import requests
 from settings import config
 
 DATA_DIR = config("DATA_DIR")
+IMF_GDD_FILENAME = "imf_gdd.parquet"
 
 DATAMAPPER_API_BASE = "https://www.imf.org/external/datamapper/api/v1"
 
@@ -96,7 +97,7 @@ def pull_imf_gdd(indicator_codes=tuple(GDD_INDICATORS)):
 
 def load_imf_gdd(data_dir=DATA_DIR):
     """Load the GDD long panel: country_iso3 | year | indicator | value."""
-    return pd.read_parquet(Path(data_dir) / "imf_gdd.parquet")
+    return pd.read_parquet(Path(data_dir) / IMF_GDD_FILENAME)
 
 
 if __name__ == "__main__":
@@ -104,7 +105,7 @@ if __name__ == "__main__":
     data_dir.mkdir(parents=True, exist_ok=True)
 
     gdd_df = pull_imf_gdd()
-    gdd_df.to_parquet(data_dir / "imf_gdd.parquet")
+    gdd_df.to_parquet(data_dir / IMF_GDD_FILENAME)
 
     coverage = gdd_df.groupby("indicator")["country_iso3"].nunique()
     print(f"Saved imf_gdd.parquet: {gdd_df.shape}")

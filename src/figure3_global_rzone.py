@@ -5,6 +5,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from build_analysis_panel import load_analysis_panel
 from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
@@ -89,7 +90,7 @@ def plot_figure3(
 
 
 def main() -> None:
-    panel = pd.read_parquet(DATA_DIR / "rzone_analysis_panel.parquet")
+    panel = load_analysis_panel(DATA_DIR)
     annual = annual_rzone_fraction(panel)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     annual.to_csv(OUTPUT_DIR / "figure3_global_rzone.csv", index=False)

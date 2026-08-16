@@ -55,6 +55,8 @@ from pathlib import Path
 import pandas as pd
 from IPython.display import Image, display
 
+from build_analysis_panel import load_analysis_panel
+from pull_imf_gdd import load_imf_gdd
 from settings import config
 from table1_summary_stats import calculate_cutoff_comparison, calculate_table1
 from updated_crisis_chronology import add_updated_crisis_series
@@ -75,8 +77,7 @@ pd.set_option("display.float_format", "{:,.2f}".format)
 # and R-Zone indicators.
 
 # %%
-panel_path = DATA_DIR / "rzone_analysis_panel.parquet"
-panel = pd.read_parquet(panel_path)
+panel = load_analysis_panel(DATA_DIR)
 
 print(f"Rows: {len(panel):,}")
 print(f"Columns: {panel.shape[1]}")
@@ -221,7 +222,7 @@ panel.loc[panel["in_paper_sample"], outcome_columns].isna().sum().rename(
 # and its edge cases live in the cleaning modules and unit tests.
 
 # %%
-gdd = pd.read_parquet(DATA_DIR / "imf_gdd.parquet")
+gdd = load_imf_gdd(DATA_DIR)
 gdd.head()
 
 # %%

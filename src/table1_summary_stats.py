@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 import paper_benchmarks as bench
+from build_analysis_panel import load_analysis_panel
 from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
@@ -270,7 +271,7 @@ def build_paper_style_table(summary, quantiles):
 
 if __name__ == "__main__":
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    panel = pd.read_parquet(DATA_DIR / "rzone_analysis_panel.parquet")
+    panel = load_analysis_panel(DATA_DIR)
     summary = calculate_table1(panel)
     quantiles = calculate_quantile_comparison(panel)
     summary.to_csv(OUTPUT_DIR / "table1_stats.csv", index=False)

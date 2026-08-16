@@ -6,9 +6,12 @@ import numpy as np
 import pandas as pd
 
 from country_sample import GHSS_COUNTRIES
+from pull_bvx_crises import load_bvx_annual_regdata
+from pull_jst_macrohistory import load_jst_macrohistory
 from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
+CRISIS_PANEL_FILENAME = "crisis_panel.parquet"
 
 
 def build_crisis_panel(bvx, jst):
@@ -82,10 +85,15 @@ def build_crisis_panel(bvx, jst):
     return panel.sort_values(["country_iso3", "year"]).reset_index(drop=True)
 
 
+def load_crisis_panel(data_dir=DATA_DIR):
+    """Load the standardized crisis-chronology panel: one row per (country, year)."""
+    return pd.read_parquet(Path(data_dir) / CRISIS_PANEL_FILENAME)
+
+
 if __name__ == "__main__":
     panel = build_crisis_panel(
-        pd.read_parquet(DATA_DIR / "bvx_annual_regdata.parquet"),
-        pd.read_parquet(DATA_DIR / "jst_macrohistory.parquet"),
+        load_bvx_annual_regdata(DATA_DIR),
+        load_jst_macrohistory(DATA_DIR),
     )
-    panel.to_parquet(DATA_DIR / "crisis_panel.parquet", index=False)
+    panel.to_parquet(DATA_DIR / CRISIS_PANEL_FILENAME, index=False)
     print(f"Saved crisis_panel.parquet: {panel.shape}")
