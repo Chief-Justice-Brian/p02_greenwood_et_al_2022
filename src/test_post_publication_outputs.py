@@ -8,13 +8,17 @@ import pytest
 from build_analysis_panel import analysis_panel_path, load_analysis_panel
 from data_overview import calculate_data_overview
 from figure3_global_rzone import annual_rzone_fraction
-from settings import config
-from updated_crisis_chronology import (
+from post_publication_crisis_chronology import (
     UPDATED_CRISIS_END_YEAR,
     UPDATED_CRISIS_SOURCE,
     add_updated_crisis_series,
 )
-from updated_results import LATEST_PREDICTOR_YEAR, updated_coverage, updated_table1
+from post_publication_results import (
+    LATEST_PREDICTOR_YEAR,
+    updated_coverage,
+    updated_table1,
+)
+from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
 OUTPUT_DIR = Path(config("OUTPUT_DIR"))
@@ -105,11 +109,11 @@ def test_historical_and_updated_figure3_windows_are_kept_separate(updated_panel)
 
 def test_generated_updated_tables_encode_valid_forecast_endpoints():
     required = [
-        OUTPUT_DIR / "table3_updated_crisis_probabilities.csv",
-        OUTPUT_DIR / "table4_updated_models.csv",
+        OUTPUT_DIR / "table3_post_publication_crisis_probabilities.csv",
+        OUTPUT_DIR / "table4_post_publication_models.csv",
     ]
     if not all(path.exists() for path in required):
-        pytest.skip("updated exhibits not built -- run `doit analysis:updated`")
+        pytest.skip("updated exhibits not built -- run `doit analysis:post_publication`")
     table3 = pd.read_csv(required[0])
     table4 = pd.read_csv(required[1])
     expected = {horizon: 2025 - horizon for horizon in range(1, 5)}
@@ -155,9 +159,9 @@ def test_final_report_includes_all_main_exhibits_and_no_code_listings():
         "table1_summary_stats.tex",
         "table3_replication.tex",
         "table4_replication.tex",
-        "table1_updated.tex",
-        "table3_updated.tex",
-        "table4_updated.tex",
+        "table1_post_publication.tex",
+        "table3_post_publication.tex",
+        "table4_post_publication.tex",
         "report_fragility_summary.tex",
         "report_missed_crises.tex",
         "report_dynamic_summary.tex",
@@ -169,9 +173,9 @@ def test_final_report_includes_all_main_exhibits_and_no_code_listings():
         "historical_business_rzone_timeline.png",
         "historical_household_rzone_timeline.png",
         "figure3_fraction_countries_rzone.jpg",
-        "updated_business_rzone_timeline.png",
-        "updated_household_rzone_timeline.png",
-        "figure3_fraction_countries_rzone_updated.jpg",
+        "post_publication_business_rzone_timeline.png",
+        "post_publication_household_rzone_timeline.png",
+        "figure3_fraction_countries_rzone_post_publication.jpg",
     ]
     for artifact in [*required_inputs, *required_figures]:
         assert artifact in source

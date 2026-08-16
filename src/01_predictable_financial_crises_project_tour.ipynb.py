@@ -56,10 +56,10 @@ import pandas as pd
 from IPython.display import Image, display
 
 from build_analysis_panel import load_analysis_panel
+from post_publication_crisis_chronology import add_updated_crisis_series
 from pull_imf_gdd import load_imf_gdd
 from settings import config
 from table1_summary_stats import calculate_cutoff_comparison, calculate_table1
-from updated_crisis_chronology import add_updated_crisis_series
 
 DATA_DIR = Path(config("DATA_DIR"))
 OUTPUT_DIR = Path(config("OUTPUT_DIR"))
@@ -392,7 +392,7 @@ models.query("horizon == 3")[
 
 # %%
 updated_panel = add_updated_crisis_series(panel)
-updated_coverage = pd.read_csv(OUTPUT_DIR / "updated_data_coverage.csv")
+updated_coverage = pd.read_csv(OUTPUT_DIR / "post_publication_data_coverage.csv")
 display(updated_coverage)
 
 # %%
@@ -415,7 +415,7 @@ display(recent_tracker)
 # not proof that crisis risk disappeared.
 
 # %%
-updated_models = pd.read_csv(OUTPUT_DIR / "table4_updated_models.csv")
+updated_models = pd.read_csv(OUTPUT_DIR / "table4_post_publication_models.csv")
 updated_models.groupby(["sector", "horizon"]).agg(
     forecast_end_year=("forecast_end_year", "first"),
     observations=("n", "first"),
@@ -424,7 +424,7 @@ updated_models.groupby(["sector", "horizon"]).agg(
 # %%
 display(
     Image(
-        filename=OUTPUT_DIR / "figure3_fraction_countries_rzone_updated.png",
+        filename=OUTPUT_DIR / "figure3_fraction_countries_rzone_post_publication.png",
         width=850,
     )
 )
@@ -497,8 +497,8 @@ print(f"Benchmarks outside tolerance: {len(failed)}")
 # The primary reader-facing outputs are:
 #
 # - `reports/final_report.pdf`: the complete narrative LaTeX report;
-# - `_output/figure1_event_history_updated.pdf`: the updated event histories;
-# - `reports/table3_updated_preview.pdf` and `table4_updated_preview.pdf`:
+# - `_output/figure1_event_history_post_publication.pdf`: the updated event histories;
+# - `reports/table3_post_publication_preview.pdf` and `table4_post_publication_preview.pdf`:
 #   detailed updated tables;
 # - `_output/post_2016_rzone_tracker.csv`: country-year monitoring data;
 # - `_output/replication_validation.csv`: every benchmark, tolerance, and result.
@@ -512,9 +512,9 @@ print(f"Benchmarks outside tolerance: {len(failed)}")
 # %%
 artifacts = [
     BASE_DIR / "reports/final_report.pdf",
-    OUTPUT_DIR / "figure1_event_history_updated.pdf",
-    BASE_DIR / "reports/table3_updated_preview.pdf",
-    BASE_DIR / "reports/table4_updated_preview.pdf",
+    OUTPUT_DIR / "figure1_event_history_post_publication.pdf",
+    BASE_DIR / "reports/table3_post_publication_preview.pdf",
+    BASE_DIR / "reports/table4_post_publication_preview.pdf",
     OUTPUT_DIR / "post_2016_rzone_tracker.csv",
     OUTPUT_DIR / "replication_validation.csv",
 ]

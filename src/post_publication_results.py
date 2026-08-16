@@ -21,6 +21,10 @@ from descriptive_results import (
     plot_event_history,
 )
 from figure3_global_rzone import annual_rzone_fraction, plot_figure3
+from post_publication_crisis_chronology import (
+    UPDATED_CRISIS_SOURCE,
+    add_updated_crisis_series,
+)
 from settings import config
 from table3_results import (
     SECTOR_COLUMNS,
@@ -30,10 +34,6 @@ from table3_results import (
     build_latex as build_table3_latex,
 )
 from table4_results import build_latex as build_table4_latex
-from updated_crisis_chronology import (
-    UPDATED_CRISIS_SOURCE,
-    add_updated_crisis_series,
-)
 
 DATA_DIR = Path(config("DATA_DIR"))
 OUTPUT_DIR = Path(config("OUTPUT_DIR"))
@@ -390,8 +390,8 @@ def _table1_latex(stats: pd.DataFrame, quantiles: pd.DataFrame) -> str:
 
 
 def build_updated_figures(panel: pd.DataFrame) -> None:
-    business = OUTPUT_DIR / "updated_business_rzone_timeline.png"
-    household = OUTPUT_DIR / "updated_household_rzone_timeline.png"
+    business = OUTPUT_DIR / "post_publication_business_rzone_timeline.png"
+    household = OUTPUT_DIR / "post_publication_household_rzone_timeline.png"
     crisis_label = "Systemic crisis onset (BVX/IMF)"
     plot_event_history(
         panel,
@@ -420,8 +420,8 @@ def build_updated_figures(panel: pd.DataFrame) -> None:
         business,
         household,
         [
-            OUTPUT_DIR / "figure1_event_history_updated.png",
-            OUTPUT_DIR / "figure1_event_history_updated.pdf",
+            OUTPUT_DIR / "figure1_event_history_post_publication.png",
+            OUTPUT_DIR / "figure1_event_history_post_publication.pdf",
         ],
         title="Updated Figure 1: Event History through 2025",
         caption=caption,
@@ -433,12 +433,12 @@ def build_updated_figures(panel: pd.DataFrame) -> None:
         end_year=LATEST_PREDICTOR_YEAR,
         historical_sample=False,
     )
-    annual.to_csv(OUTPUT_DIR / "figure3_global_rzone_updated.csv", index=False)
+    annual.to_csv(OUTPUT_DIR / "figure3_global_rzone_post_publication.csv", index=False)
     plot_figure3(
         annual,
-        OUTPUT_DIR / "figure3_fraction_countries_rzone_updated.png",
-        OUTPUT_DIR / "figure3_fraction_countries_rzone_updated.pdf",
-        OUTPUT_DIR / "figure3_fraction_countries_rzone_updated.jpg",
+        OUTPUT_DIR / "figure3_fraction_countries_rzone_post_publication.png",
+        OUTPUT_DIR / "figure3_fraction_countries_rzone_post_publication.pdf",
+        OUTPUT_DIR / "figure3_fraction_countries_rzone_post_publication.jpg",
     )
 
 
@@ -446,27 +446,27 @@ def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     panel = add_updated_crisis_series(load_analysis_panel(DATA_DIR))
     coverage = updated_coverage(panel)
-    coverage.to_csv(OUTPUT_DIR / "updated_data_coverage.csv", index=False)
+    coverage.to_csv(OUTPUT_DIR / "post_publication_data_coverage.csv", index=False)
 
     table1, table1_quantiles = updated_table1(panel)
-    table1.to_csv(OUTPUT_DIR / "table1_updated_stats.csv", index=False)
-    table1_quantiles.to_csv(OUTPUT_DIR / "table1_updated_quantiles.csv", index=False)
-    (OUTPUT_DIR / "table1_updated.tex").write_text(
+    table1.to_csv(OUTPUT_DIR / "table1_post_publication_stats.csv", index=False)
+    table1_quantiles.to_csv(OUTPUT_DIR / "table1_post_publication_quantiles.csv", index=False)
+    (OUTPUT_DIR / "table1_post_publication.tex").write_text(
         _table1_latex(table1, table1_quantiles), encoding="utf-8"
     )
 
     table3 = updated_table3(panel)
-    table3.to_csv(OUTPUT_DIR / "table3_updated_crisis_probabilities.csv", index=False)
-    (OUTPUT_DIR / "table3_updated.tex").write_text(
+    table3.to_csv(OUTPUT_DIR / "table3_post_publication_crisis_probabilities.csv", index=False)
+    (OUTPUT_DIR / "table3_post_publication.tex").write_text(
         build_table3_latex(table3), encoding="utf-8"
     )
 
     table4_coefficients, table4_models = updated_table4(panel)
     table4_coefficients.to_csv(
-        OUTPUT_DIR / "table4_updated_coefficients.csv", index=False
+        OUTPUT_DIR / "table4_post_publication_coefficients.csv", index=False
     )
-    table4_models.to_csv(OUTPUT_DIR / "table4_updated_models.csv", index=False)
-    (OUTPUT_DIR / "table4_updated.tex").write_text(
+    table4_models.to_csv(OUTPUT_DIR / "table4_post_publication_models.csv", index=False)
+    (OUTPUT_DIR / "table4_post_publication.tex").write_text(
         build_table4_latex(table4_coefficients, table4_models), encoding="utf-8"
     )
 

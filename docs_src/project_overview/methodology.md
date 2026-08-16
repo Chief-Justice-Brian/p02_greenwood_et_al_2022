@@ -10,7 +10,7 @@ analysis. `doit` records the file dependencies between these stages:
 3. `analysis` writes replication, extension, and diagnostic artifacts to
    `_output/`.
 
-`doit analysis:updated` is a separate post-publication calculation. It never
+`doit analysis:post_publication` is a separate post-publication calculation. It never
 overwrites the historical replication artifacts.
 
 The final shareable dataset is `_data/rzone_analysis_panel.parquet`. Its key is
@@ -82,7 +82,7 @@ Updated Tables 1, 3, and 4 and Figures 1 and 3 use predictor pairs through
 T66.7 price thresholds; the update does not re-estimate the definition using
 later observations. Updated Table 1 nevertheless reports expanded-sample
 quantiles descriptively and stores the frozen assignment threshold beside each
-relevant gate in `table1_updated_quantiles.csv`.
+relevant gate in `table1_post_publication_quantiles.csv`.
 
 The updated systemic-crisis onset variable combines BVX through 2016 with the
 Laeven--Valencia (2026) IMF chronology from 2017 through 2025. The confirmed
@@ -96,7 +96,7 @@ horizon-$h$ outcome at year $t$ requires crisis coverage in every year from
 $t+1$ through $t+h$. With crisis coverage through 2025, the final usable
 forecast origins are 2024, 2023, 2022, and 2021 at horizons one through four.
 These endpoints and the final usable year of every input are written to
-`updated_data_coverage.csv` and repeated in the updated regression CSVs.
+`post_publication_data_coverage.csv` and repeated in the updated regression CSVs.
 
 ## Replication validation
 

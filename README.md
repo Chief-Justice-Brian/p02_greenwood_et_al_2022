@@ -60,19 +60,23 @@ The main generated artifacts are:
   1, 3, and 4 and Figures 1 and 3.
 
 The historical replication is kept separate from the post-publication update.
-Build the updated exhibits with:
+Build the post-publication exhibits with:
 
 ```bash
-doit analysis:updated
-doit compile_latex:table1_updated_preview \
-     compile_latex:table3_updated_preview \
-     compile_latex:table4_updated_preview \
-     compile_latex:figure3_updated_preview
+doit analysis:post_publication
+doit compile_latex:table1_post_publication_preview \
+     compile_latex:table3_post_publication_preview \
+     compile_latex:table4_post_publication_preview \
+     compile_latex:figure3_post_publication_preview
 ```
 
-The updated task writes separately labelled Table 1, Table 3, Table 4,
-Figure 1, and Figure 3 files (names containing `updated`) plus
-`_output/updated_data_coverage.csv`. Predictor and R-Zone series extend through
+The post_publication task writes separately labelled Table 1, Table 3, Table 4,
+Figure 1, and Figure 3 files (names containing `post_publication`) plus
+`_output/post_publication_data_coverage.csv`. The `post_publication_*` files are
+the rubric's "reproduce with updated numbers" deliverable: the same exhibits
+recomputed with the data that arrived after the paper's sample ends. They
+complement the historical replication files and do not supersede them.
+Predictor and R-Zone series extend through
 2025. Crisis outcomes use BVX through 2016 and Laeven--Valencia (2026) through
 2025, so the last valid forecast origins are 2024, 2023, 2022, and 2021 for
 horizons one through four. Historical R-Zone thresholds remain frozen.
@@ -164,7 +168,7 @@ IMF stopped collecting share prices in 2017.
 | Source | Role in the paper | Role here | Pull script |
 |---|---|---|---|
 | Baron–Verner–Xiong (2021), Harvard Dataverse | Baseline crisis chronology | Same | `src/pull_bvx_crises.py` |
-| Laeven–Valencia (2026), IMF WP 26/94 | — | Systemic-crisis chronology update, 2017–2025 | encoded and documented in `src/updated_crisis_chronology.py` |
+| Laeven–Valencia (2026), IMF WP 26/94 | — | Systemic-crisis chronology update, 2017–2025 | encoded and documented in `src/post_publication_crisis_chronology.py` |
 | IMF Global Debt Database | Credit: **primary** | Same | `src/pull_imf_gdd.py` |
 | BIS Total Credit Statistics | Credit: used for Thailand | Credit supplement; carries the monitor forward | `src/pull_bis_total_credit.py` |
 | IMF share price indices (former IFS) | Equity: their stated GFD fallback | Equity **primary**, 1950–2016 | `src/pull_imf_equity.py` |
