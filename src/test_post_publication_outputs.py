@@ -9,15 +9,18 @@ from build_analysis_panel import analysis_panel_path, load_analysis_panel
 from data_overview import calculate_data_overview
 from figure3_global_rzone import annual_rzone_fraction
 from post_publication_crisis_chronology import (
+    BVX_EQUITY_DECLINE_THRESHOLD,
+    BVX_EXTENDED_CRISIS_SOURCE,
     UPDATED_CRISIS_END_YEAR,
-    UPDATED_CRISIS_SOURCE,
-    add_updated_crisis_series,
+    add_bvx_extended_crisis_series,
+    max_drawdown_in_year,
 )
 from post_publication_results import (
     LATEST_PREDICTOR_YEAR,
     updated_coverage,
     updated_table1,
 )
+from pull_us_bank_equity import US_BANK_EQUITY_FILENAME, load_us_bank_equity
 from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
@@ -34,28 +37,46 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def updated_panel():
-    return add_updated_crisis_series(load_analysis_panel(DATA_DIR))
+    if not (DATA_DIR / US_BANK_EQUITY_FILENAME).exists():
+        pytest.skip("us_bank_equity.parquet not pulled yet -- run `doit` first")
+    return add_bvx_extended_crisis_series(
+        load_analysis_panel(DATA_DIR), load_us_bank_equity(DATA_DIR)
+    )
 
 
-def test_updated_chronology_preserves_bvx_and_has_explicit_extension(updated_panel):
+def test_bvx_extended_preserves_bvx_and_lets_the_data_decide_us_2023(updated_panel):
     historical = updated_panel["year"].le(2016)
     pd.testing.assert_series_equal(
-        updated_panel.loc[historical, "crisis_updated"],
+        updated_panel.loc[historical, "crisis_bvx_extended"],
         updated_panel.loc[historical, "crisis_bvx"],
         check_names=False,
         check_dtype=False,
     )
+    # The US 2023 label must equal what the pulled index implies, so the
+    # classification cannot be authored by hand.
+    drawdown = max_drawdown_in_year(load_us_bank_equity(DATA_DIR), 2023)
+    usa_2023 = updated_panel.loc[
+        updated_panel["country_iso3"].eq("USA") & updated_panel["year"].eq(2023),
+        "crisis_bvx_extended",
+    ].iloc[0]
+    assert usa_2023 == float(drawdown >= BVX_EQUITY_DECLINE_THRESHOLD)
+
+
+def test_extension_window_is_fully_labelled(updated_panel):
+    # No silent gaps a regression could misread as observed non-crises.
     extension = updated_panel["year"].between(2017, UPDATED_CRISIS_END_YEAR)
-    assert updated_panel.loc[extension, "crisis_updated"].notna().all()
-    # The confirmed post-2016 IMF onsets occur outside the paper's 42 countries.
-    assert updated_panel.loc[extension, "crisis_updated"].sum() == 0
-    assert updated_panel["updated_crisis_source"].eq(UPDATED_CRISIS_SOURCE).all()
+    assert updated_panel.loc[extension, "crisis_bvx_extended"].notna().all()
+    assert (
+        updated_panel["bvx_extended_crisis_source"]
+        .eq(BVX_EXTENDED_CRISIS_SOURCE)
+        .all()
+    )
 
 
 def test_updated_future_outcomes_have_horizon_specific_endpoints(updated_panel):
     for horizon in range(1, 5):
         observed = updated_panel.loc[
-            updated_panel[f"crisis_updated_next_{horizon}y"].notna(), "year"
+            updated_panel[f"crisis_bvx_extended_next_{horizon}y"].notna(), "year"
         ]
         assert observed.max() == UPDATED_CRISIS_END_YEAR - horizon
 
@@ -162,6 +183,7 @@ def test_final_report_includes_all_main_exhibits_and_no_code_listings():
         "table1_post_publication.tex",
         "table3_post_publication.tex",
         "table4_post_publication.tex",
+        "post_publication_crisis_screen.tex",
         "report_fragility_summary.tex",
         "report_missed_crises.tex",
         "report_dynamic_summary.tex",

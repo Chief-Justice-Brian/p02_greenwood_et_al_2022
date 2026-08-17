@@ -56,8 +56,9 @@ import pandas as pd
 from IPython.display import Image, display
 
 from build_analysis_panel import load_analysis_panel
-from post_publication_crisis_chronology import add_updated_crisis_series
+from post_publication_crisis_chronology import add_bvx_extended_crisis_series
 from pull_imf_gdd import load_imf_gdd
+from pull_us_bank_equity import load_us_bank_equity
 from settings import config
 from table1_summary_stats import calculate_cutoff_comparison, calculate_table1
 
@@ -391,7 +392,7 @@ models.query("horizon == 3")[
 # 2021 for four years.
 
 # %%
-updated_panel = add_updated_crisis_series(panel)
+updated_panel = add_bvx_extended_crisis_series(panel, load_us_bank_equity(DATA_DIR))
 updated_coverage = pd.read_csv(OUTPUT_DIR / "post_publication_data_coverage.csv")
 display(updated_coverage)
 

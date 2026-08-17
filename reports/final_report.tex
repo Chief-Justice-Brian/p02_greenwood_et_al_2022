@@ -78,12 +78,40 @@ values remain missing, and a future crisis outcome is defined only when the
 entire relevant future window is covered. The historical pooled Q80 debt and
 T66.7 price cutoffs are frozen for every later classification.
 
-For the post-2016 crisis update, the project combines BVX through 2016 with the
-Laeven--Valencia IMF systemic-banking-crisis chronology for 2017--2025. The
-confirmed post-2016 onsets in that chronology occur outside the paper's
-42-country sample; cases labeled borderline are excluded. Consequently, the
-updated regressions gain documented non-crisis outcomes but no new systemic
-onset within this country universe.
+For the post-2016 crisis update, the outcome series extends BVX's own
+definition forward, so ``crisis'' means one thing in every year of the panel:
+a bank equity index decline of 30\% or more together with narrative evidence
+of widespread bank failures or a banking panic. No published chronology
+applies these criteria past 2016, so the extension is constructed here from
+published datasets: the BVX replication data and the CRSP value-weighted bank
+portfolio from the Ken French Data Library, which tracks the paper's own
+United States bank equity series closely over their post-war overlap. A
+narrative screen of the sample for 2017--2025 yields three candidate
+episodes, and the pulled data decide each label mechanically
+(Table~\ref{tab:crisis-screen}). The 2023 United States episode is genuinely
+borderline: the broad value-weighted index stops short of the 30\% bar
+because the crash concentrated in regional banks while the largest
+institutions rallied, even though large-cap bank benchmarks crossed the bar
+and the failure and run evidence is unprecedented by assets. BVX's own
+chronology contains a precedent in the other direction---the United States
+in 1984 is counted as a crisis on narrative evidence with a smaller
+aggregate equity decline---so we let the mechanical rule decide and report
+the sensitivity openly.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Post-2016 candidate crisis episodes under the paper's own
+criteria.} Each row is a sample episode from the 2017--2025 narrative screen,
+with the verdict of BVX's criteria as applied by our pipeline. The takeaway
+is that no post-2016 episode qualifies as a systemic crisis onset, but the
+United States in 2023 is borderline: the broad value-weighted bank index
+falls short of the 30\% threshold that large-cap benchmarks crossed, while
+the failure and run evidence rivals any postwar episode. An index choice,
+not the data alone, decides the 2023 call.}
+\label{tab:crisis-screen}
+\small
+\input{../_output/post_publication_crisis_screen.tex}
+\end{table}
 
 \begin{table}[H]
 \centering
@@ -262,7 +290,7 @@ and absent in both sectors in 2024 and 2025, despite broad predictor coverage.}
 \centering
 \includegraphics[width=0.96\textwidth]{../_output/post_publication_business_rzone_timeline.png}
 \caption{\textbf{Updated Figure 1: event history through 2025.} Historical BVX
-crises are joined to the later IMF systemic-crisis chronology, and business
+crises are joined to our extension of BVX's own criteria, and business
 R-Zones use unchanged historical thresholds. The extension adds many predictor
 observations but no confirmed post-2016 systemic onset inside the 42-country
 sample.}
@@ -471,9 +499,6 @@ Finance} 77(2).
 
 Baron, Matthew, Emil Verner, and Wei Xiong. 2021. ``Banking Crises Without
 Panics.'' \textit{Quarterly Journal of Economics} 136(1).
-
-Laeven, Luc, and Fabi\'an Valencia. 2026. ``Systemic Banking Crises Database:
-1970--2025.'' IMF Working Paper 26/94.
 
 Additional public series are drawn from the IMF Global Debt Database and
 former share-price statistics, the BIS Total Credit and Residential Property

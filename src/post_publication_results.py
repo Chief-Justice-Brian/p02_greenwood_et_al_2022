@@ -1,10 +1,10 @@
 """Build post-publication versions of the assigned GHSS exhibits.
 
 Historical replication files are never overwritten. Updated predictor and
-R-Zone series run through 2025. Crisis outcomes combine BVX through 2016 with
-the IMF Laeven--Valencia (2026) systemic-crisis chronology through 2025, so
-the latest valid forecast origins are 2024, 2023, 2022, and 2021 at horizons
-one through four.
+R-Zone series run through 2025. Crisis outcomes use BVX through 2016 and our
+extension of BVX's own criteria through 2025 (see
+``post_publication_crisis_chronology.py``), so the latest valid forecast
+origins are 2024, 2023, 2022, and 2021 at horizons one through four.
 """
 
 from pathlib import Path
@@ -22,9 +22,10 @@ from descriptive_results import (
 )
 from figure3_global_rzone import annual_rzone_fraction, plot_figure3
 from post_publication_crisis_chronology import (
-    UPDATED_CRISIS_SOURCE,
-    add_updated_crisis_series,
+    BVX_EXTENDED_CRISIS_SOURCE,
+    add_bvx_extended_crisis_series,
 )
+from pull_us_bank_equity import load_us_bank_equity
 from settings import config
 from table3_results import (
     SECTOR_COLUMNS,
@@ -40,7 +41,7 @@ OUTPUT_DIR = Path(config("OUTPUT_DIR"))
 LATEST_PREDICTOR_YEAR = 2025
 
 TABLE1_LABELS = {
-    "crisis_updated": "Systemic crisis onset (BVX/IMF) (\\%)",
+    "crisis_bvx_extended": "Systemic crisis onset (BVX criteria) (\\%)",
     "crisis_jst": "Schularick and Taylor (2012) (\\%)",
     "crisis_rr": "Reinhart and Rogoff (2009) (\\%)",
     "bank_equity_crash": "Bank Equity Crash (\\%)",
@@ -55,7 +56,7 @@ TABLE1_LABELS = {
 }
 
 PERCENT_ROWS = {
-    "crisis_updated",
+    "crisis_bvx_extended",
     "crisis_jst",
     "crisis_rr",
     "bank_equity_crash",
@@ -81,7 +82,7 @@ def updated_coverage(panel: pd.DataFrame) -> pd.DataFrame:
         "real_house_price_growth": "delta3_log_real_house_price",
         "business_rzone": "rzone_business",
         "household_rzone": "rzone_household",
-        "updated_systemic_crisis_onset": "crisis_updated",
+        "bvx_criteria_crisis_onset": "crisis_bvx_extended",
     }
     rows = []
     for series, column in specifications.items():
@@ -118,7 +119,7 @@ def updated_coverage(panel: pd.DataFrame) -> pd.DataFrame:
             }
         )
     for horizon in range(1, 5):
-        column = f"crisis_updated_next_{horizon}y"
+        column = f"crisis_bvx_extended_next_{horizon}y"
         observed = panel.loc[panel[column].notna(), ["country_iso3", "year"]]
         rows.append(
             {
@@ -140,7 +141,7 @@ def updated_coverage(panel: pd.DataFrame) -> pd.DataFrame:
 def updated_table1(panel: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Recalculate the full Table 1 layout at each series' latest coverage."""
     variable_specs = [
-        (None, "crisis_updated"),
+        (None, "crisis_bvx_extended"),
         (None, "crisis_jst"),
         (None, "crisis_rr"),
         (None, "bank_equity_crash"),
@@ -231,7 +232,7 @@ def updated_table3(panel: pd.DataFrame) -> pd.DataFrame:
             .to_dict()
         )
         for horizon in range(1, 5):
-            outcome = f"crisis_updated_next_{horizon}y"
+            outcome = f"crisis_bvx_extended_next_{horizon}y"
             sample = predictor_sample.loc[predictor_sample[outcome].notna()].copy()
             for price in range(1, 4):
                 for debt in range(1, 6):
@@ -262,7 +263,7 @@ def updated_table3(panel: pd.DataFrame) -> pd.DataFrame:
                             "difference_t_stat": t_stat,
                             "difference_p_value": p_value,
                             "forecast_end_year": int(sample["year"].max()),
-                            "crisis_definition": UPDATED_CRISIS_SOURCE,
+                            "crisis_definition": BVX_EXTENDED_CRISIS_SOURCE,
                         }
                     )
     return pd.DataFrame(rows)
@@ -283,7 +284,7 @@ def updated_table4(panel: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         }
         pair = _pair_mask(panel, sector)
         for horizon in range(1, 5):
-            outcome = f"crisis_updated_next_{horizon}y"
+            outcome = f"crisis_bvx_extended_next_{horizon}y"
             sample = panel.loc[pair & panel[outcome].notna()].copy()
             for specification, predictors in specifications.items():
                 result = _fit(sample, outcome, predictors, DK_BANDWIDTH[horizon])
@@ -299,7 +300,7 @@ def updated_table4(panel: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
                             "t_stat": result.tstats[variable],
                             "p_value": result.pvalues[variable],
                             "forecast_end_year": int(sample["year"].max()),
-                            "crisis_definition": UPDATED_CRISIS_SOURCE,
+                            "crisis_definition": BVX_EXTENDED_CRISIS_SOURCE,
                         }
                     )
                 combined = 100.0 * result.params.sum()
@@ -323,7 +324,7 @@ def updated_table4(panel: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
                         "combined_p_value": combined_p,
                         "dk_bandwidth": DK_BANDWIDTH[horizon],
                         "forecast_end_year": int(sample["year"].max()),
-                        "crisis_definition": UPDATED_CRISIS_SOURCE,
+                        "crisis_definition": BVX_EXTENDED_CRISIS_SOURCE,
                     }
                 )
     return pd.DataFrame(coefficients), pd.DataFrame(models)
@@ -360,7 +361,7 @@ def _table1_latex(stats: pd.DataFrame, quantiles: pd.DataFrame) -> str:
         r" & $N$ & Mean & SD & & & & \\",
         r"\cmidrule(lr){2-4}",
         r"\multicolumn{1}{r}{\underline{Financial Crisis Indicators:}} & & & & & & & \\",
-        row("crisis_updated"),
+        row("crisis_bvx_extended"),
         row("crisis_jst"),
         row("crisis_rr"),
         r"\addlinespace",
@@ -392,13 +393,13 @@ def _table1_latex(stats: pd.DataFrame, quantiles: pd.DataFrame) -> str:
 def build_updated_figures(panel: pd.DataFrame) -> None:
     business = OUTPUT_DIR / "post_publication_business_rzone_timeline.png"
     household = OUTPUT_DIR / "post_publication_household_rzone_timeline.png"
-    crisis_label = "Systemic crisis onset (BVX/IMF)"
+    crisis_label = "Systemic crisis onset (BVX criteria)"
     plot_event_history(
         panel,
         "business",
         business,
         end_year=LATEST_PREDICTOR_YEAR,
-        crisis_column="crisis_updated",
+        crisis_column="crisis_bvx_extended",
         crisis_label=crisis_label,
     )
     plot_event_history(
@@ -406,14 +407,14 @@ def build_updated_figures(panel: pd.DataFrame) -> None:
         "household",
         household,
         end_year=LATEST_PREDICTOR_YEAR,
-        crisis_column="crisis_updated",
+        crisis_column="crisis_bvx_extended",
         crisis_label=crisis_label,
     )
     caption = fill(
         "R-Zone markers and predictor coverage extend through 2025. Crisis "
-        "onsets use BVX through 2016 and the IMF Laeven-Valencia (2026) "
-        "systemic-crisis chronology from 2017 through 2025. Historical "
-        "R-Zone thresholds are frozen and are not recalibrated.",
+        "onsets use BVX through 2016 and our extension of BVX's own criteria "
+        "from 2017 through 2025. Historical R-Zone thresholds are frozen and "
+        "are not recalibrated.",
         width=155,
     )
     combine_event_history_panels(
@@ -442,9 +443,81 @@ def build_updated_figures(panel: pd.DataFrame) -> None:
     )
 
 
+def crisis_screen(panel: pd.DataFrame) -> pd.DataFrame:
+    """The post-2016 candidate episodes and each one's verdict.
+
+    The US verdict and drawdown come from the panel, so this table follows
+    the data. The Switzerland and Russia rows restate the narrative-screen
+    conclusions documented with sources in
+    ``post_publication_crisis_chronology.py``.
+    """
+    usa_2023_label = panel.loc[
+        panel["country_iso3"].eq("USA") & panel["year"].eq(2023),
+        "crisis_bvx_extended",
+    ]
+    usa_fires = bool(usa_2023_label.eq(1.0).any())
+    drawdown_pct = 100.0 * float(panel["us_2023_bank_equity_drawdown"].iloc[0])
+
+    if usa_fires:
+        usa_basis = (
+            f"CRSP value-weighted bank index fell {drawdown_pct:.1f}% from its "
+            "trailing peak; three of the four largest US bank failures on "
+            "record; documented depositor runs"
+        )
+    else:
+        usa_basis = (
+            f"CRSP value-weighted bank index fell {drawdown_pct:.1f}% from its "
+            "trailing peak, short of the 30% bar: the crash concentrated in "
+            "regional banks while the largest institutions rallied. The "
+            "failure and run evidence keeps the episode borderline"
+        )
+    rows = [
+        {
+            "episode": "United States",
+            "year": 2023,
+            "verdict": "Crisis onset" if usa_fires else "No onset",
+            "basis": usa_basis,
+        },
+        {
+            "episode": "Switzerland",
+            "year": 2023,
+            "verdict": "No onset",
+            "basis": (
+                "Single institution (Credit Suisse); the aggregate Swiss bank "
+                "index never approached a 30% decline"
+            ),
+        },
+        {
+            "episode": "Russia",
+            "year": 2022,
+            "verdict": "Excluded (war)",
+            "basis": "War-driven episode; BVX's own exclude-war convention applies",
+        },
+    ]
+    return pd.DataFrame(rows)
+
+
+def _crisis_screen_latex(screen: pd.DataFrame) -> str:
+    lines = [
+        "\\begin{tabular}{lllp{7.2cm}}",
+        "\\toprule",
+        "Episode & Year & Verdict & Basis \\\\",
+        "\\midrule",
+    ]
+    for _, row in screen.iterrows():
+        basis = row["basis"].replace("%", "\\%")
+        lines.append(
+            f"{row['episode']} & {row['year']} & {row['verdict']} & {basis} \\\\"
+        )
+    lines += ["\\bottomrule", "\\end{tabular}"]
+    return "\n".join(lines) + "\n"
+
+
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    panel = add_updated_crisis_series(load_analysis_panel(DATA_DIR))
+    panel = add_bvx_extended_crisis_series(
+        load_analysis_panel(DATA_DIR), load_us_bank_equity(DATA_DIR)
+    )
     coverage = updated_coverage(panel)
     coverage.to_csv(OUTPUT_DIR / "post_publication_data_coverage.csv", index=False)
 
@@ -471,6 +544,12 @@ def main() -> None:
     )
 
     build_updated_figures(panel)
+
+    screen = crisis_screen(panel)
+    screen.to_csv(OUTPUT_DIR / "post_publication_crisis_screen.csv", index=False)
+    (OUTPUT_DIR / "post_publication_crisis_screen.tex").write_text(
+        _crisis_screen_latex(screen), encoding="utf-8"
+    )
     print(
         "Saved updated Tables 1/3/4, Figures 1/3, and coverage metadata "
         "without modifying the historical replication outputs"

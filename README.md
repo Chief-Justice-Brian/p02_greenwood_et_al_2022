@@ -77,9 +77,22 @@ the rubric's "reproduce with updated numbers" deliverable: the same exhibits
 recomputed with the data that arrived after the paper's sample ends. They
 complement the historical replication files and do not supersede them.
 Predictor and R-Zone series extend through
-2025. Crisis outcomes use BVX through 2016 and Laeven--Valencia (2026) through
-2025, so the last valid forecast origins are 2024, 2023, 2022, and 2021 for
-horizons one through four. Historical R-Zone thresholds remain frozen.
+2025. Crisis outcomes are `crisis_bvx_extended`: BVX through 2016, then our
+own application of BVX's stated criteria (30%+ bank equity decline plus
+narrative failures/panic) for 2017--2025, so "crisis" means the same thing in
+every year of the panel. The last valid forecast origins are 2024, 2023,
+2022, and 2021 for horizons one through four, and historical R-Zone
+thresholds remain frozen.
+
+The equity criterion is decided by pulled data rather than asserted, using
+the CRSP value-weighted Banks portfolio from the Ken French Data Library,
+which tracks the paper's own US bank equity series over their post-war
+overlap. Under that paper-faithful broad index the March 2023 US episode
+falls short of the 30% bar (the crash concentrated in regional banks while
+the largest institutions rallied), so the sample records no post-2016 onset
+and the report presents 2023 as a documented borderline call. The candidate
+episodes and their verdicts are written to
+`_output/post_publication_crisis_screen.csv` and `.tex`.
 
 The required original data-understanding exhibit is separate from every paper
 replication. Build and open its captioned LaTeX report with:
@@ -168,7 +181,6 @@ IMF stopped collecting share prices in 2017.
 | Source | Role in the paper | Role here | Pull script |
 |---|---|---|---|
 | Baron–Verner–Xiong (2021), Harvard Dataverse | Baseline crisis chronology | Same | `src/pull_bvx_crises.py` |
-| Laeven–Valencia (2026), IMF WP 26/94 | — | Systemic-crisis chronology update, 2017–2025 | encoded and documented in `src/post_publication_crisis_chronology.py` |
 | IMF Global Debt Database | Credit: **primary** | Same | `src/pull_imf_gdd.py` |
 | BIS Total Credit Statistics | Credit: used for Thailand | Credit supplement; carries the monitor forward | `src/pull_bis_total_credit.py` |
 | IMF share price indices (former IFS) | Equity: their stated GFD fallback | Equity **primary**, 1950–2016 | `src/pull_imf_equity.py` |
@@ -177,8 +189,32 @@ IMF stopped collecting share prices in 2017.
 | BIS Residential Property Prices | House prices: **primary** | Same | `src/pull_bis_property_prices.py` |
 | OECD Analytical House Prices | House prices: supplement (their footnote 7) | Same | `src/pull_oecd_house_prices.py` |
 | World Bank WDI | Inflation + GDP | Same | `src/pull_worldbank_wdi.py` |
+| CRSP US Banks portfolio (Ken French Data Library) | — | Bank equity criterion for the BVX-criteria crisis extension; validated against BVX's own US series | `src/pull_us_bank_equity.py` |
 
 Since our non-equity data sources are identical to the original paper (vintages aside), substitution risk is isolated to the equity column. This explains why our only deviation from Table 1 occurs in equity standard deviation (46.8 vs. 48.8)—an expected result given our reliance on free alternatives to the paper's paid equity sources.
+
+### Why the BVX chronology is extended ourselves instead of with Laeven--Valencia
+
+The paper's crisis labels come from Baron--Verner--Xiong, whose published list
+ends in 2016. We do not continue it with the IMF's Laeven--Valencia chronology,
+for two reasons. First, the two are built from different rules: BVX identify a
+crisis from a 30%+ bank equity index decline plus narrative evidence of
+widespread failures or panics, while Laeven--Valencia additionally require
+significant policy intervention. A chronology is only comparable over time
+when every year is judged by the same rule, and these rules disagree even
+about the same historical years: the US in 1984 (Continental Illinois) is a
+crisis under BVX but not under Laeven--Valencia. They split on exactly the
+episode shape that March 2023 produced, so appending Laeven--Valencia would
+change what "crisis = 1" means at the 2017 seam. Second, this project's data
+policy is published datasets only, and the IMF publishes the Laeven--Valencia
+chronology only as tables inside a working paper, with no data file.
+
+Instead, `crisis_bvx_extended` re-applies BVX's own published criteria to new
+published data (the CRSP bank portfolio plus a documented narrative screen).
+The IMF chronology is cited in the final report as corroborating context --
+it reaches the same no-post-2016-onset conclusion by its own route -- but it
+is not a data input. The 2023 US episode is the documented borderline call
+(see the crisis-screen table in the final report).
 
 ## Formatting
 
