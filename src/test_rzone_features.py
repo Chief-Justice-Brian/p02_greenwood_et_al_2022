@@ -1,3 +1,5 @@
+"""Unit tests for the ``rzone_features`` functions on small synthetic panels."""
+
 import numpy as np
 import pandas as pd
 
@@ -10,6 +12,7 @@ from rzone_features import (
 
 
 def test_future_event_windows_excludes_current_year():
+    # A crisis in year t must not count toward crisis_next_h at origin t.
     panel = pd.DataFrame(
         {
             "country_iso3": ["AAA"] * 5,
@@ -23,6 +26,7 @@ def test_future_event_windows_excludes_current_year():
 
 
 def test_future_event_window_requires_complete_chronology():
+    # A chronology gap inside the window must yield NaN, not a false zero.
     panel = pd.DataFrame(
         {
             "country_iso3": ["AAA"] * 4,
@@ -35,6 +39,8 @@ def test_future_event_window_requires_complete_chronology():
 
 
 def test_fixed_cutoffs_and_rzone_assignment():
+    # Cutoffs, buckets, and indicators must compose into the R-zone AND
+    # condition, with missing inputs propagating to NA instead of a silent zero.
     cutoffs = quantile_cutoffs(pd.Series(range(1, 11)), [0.2, 0.8])
     buckets = assign_bucket(pd.Series([1.0, 5.0, 10.0, np.nan]), cutoffs)
     high_debt = indicator_above(pd.Series([5.0, 10.0, np.nan]), cutoffs[0.8])

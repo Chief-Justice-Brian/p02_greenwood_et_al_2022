@@ -114,6 +114,7 @@ else:
 
 # OS type
 def get_os():
+    """Return "windows", "nix" (macOS/Linux), or "unknown" for this platform."""
     os_name = system()
     if os_name == "Windows":
         return "windows"
@@ -131,18 +132,20 @@ else:
     defaults["OS_TYPE"] = get_os()
 
 
-## Dates
-# Full panel window: the paper's sample starts in 1950; END_DATE extends
-# through the present for the updated-numbers requirement (R-Zone Monitor).
+## Dates -- two windows, two types
+# START_DATE / END_DATE (datetime): the FULL panel window the pipeline
+# builds, from the paper's 1950 start through the present, so the
+# post-publication exhibits satisfy the updated-numbers requirement
+# (the R-Zone Monitor).
 defaults["START_DATE"] = datetime.strptime("1950-01-01", "%Y-%m-%d")
 defaults["END_DATE"] = datetime.strptime("2026-06-30", "%Y-%m-%d")
 
-# Replication sample bounds (Greenwood-Hanson-Shleifer-Sorensen 2022 use
-# 1950-2016). Quantile cutoffs for the replication exhibits are computed on
-# this window ONLY, so that post-2016 data can never silently move the
-# historical cutoffs.
-defaults["PAPER_SAMPLE_START"] = 1950
-defaults["PAPER_SAMPLE_END"] = 2016
+# PAPER_SAMPLE_START_YEAR / PAPER_SAMPLE_END_YEAR (int): the REPLICATION
+# window (Greenwood-Hanson-Shleifer-Sorensen 2022 use 1950-2016). Quantile
+# cutoffs for the replication exhibits are computed on this window ONLY, so
+# post-2016 data can never silently move the historical cutoffs.
+defaults["PAPER_SAMPLE_START_YEAR"] = 1950
+defaults["PAPER_SAMPLE_END_YEAR"] = 2016
 
 
 ## File paths
@@ -175,6 +178,17 @@ defaults = {
     **defaults,
 }
 
+# Values arriving from the command line or a .env file are plain strings,
+# but these variables need a real type before use (START_DATE.year is called
+# downstream). String sources are cast through this registry whenever the
+# caller does not pass an explicit cast; typed module defaults skip it.
+STRING_SOURCE_CASTS = {
+    "START_DATE": lambda value: datetime.strptime(value, "%Y-%m-%d"),
+    "END_DATE": lambda value: datetime.strptime(value, "%Y-%m-%d"),
+    "PAPER_SAMPLE_START_YEAR": int,
+    "PAPER_SAMPLE_END_YEAR": int,
+}
+
 
 def config(
     var_name,
@@ -192,13 +206,14 @@ def config(
     4. Defaults defined in-line in the local file
     5. Error
     """
+    # CLI and environment values are strings; date/year variables need typing
+    string_source_cast = cast if cast is not None else STRING_SOURCE_CASTS.get(var_name)
 
     # 1. Command line arguments (highest priority)
     if var_name in cli_vars and cli_vars[var_name] is not None:
         value = cli_vars[var_name]
-        # Apply cast if provided
-        if cast is not None:
-            value = cast(value)
+        if string_source_cast is not None:
+            value = string_source_cast(value)
         if "DIR" in var_name and convert_dir_vars_to_abs_path:
             value = if_relative_make_abs(Path(value))
         return value
@@ -208,9 +223,8 @@ def config(
     env_sentinel = object()
     env_value = _config(var_name, default=env_sentinel)
     if env_value is not env_sentinel:
-        # Found in environment
-        if cast is not None:
-            env_value = cast(env_value)
+        if string_source_cast is not None:
+            env_value = string_source_cast(env_value)
         if "DIR" in var_name and convert_dir_vars_to_abs_path:
             env_value = if_relative_make_abs(Path(env_value))
         return env_value
@@ -238,6 +252,7 @@ def config(
 
 
 def create_directories():
+    """Create the DATA_DIR and OUTPUT_DIR directories if they do not exist."""
     config("DATA_DIR").mkdir(parents=True, exist_ok=True)
     config("OUTPUT_DIR").mkdir(parents=True, exist_ok=True)
 

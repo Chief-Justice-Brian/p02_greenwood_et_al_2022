@@ -1,13 +1,48 @@
 """Run or update the project. This file uses the `doit` Python package. It works
 like a Makefile, but is Python-based.
 
-Pipeline stages (each stage only depends on the previous one):
-1. config     -- create _data/_output directories
-2. pull       -- download every raw data source (all free, no API keys):
-                 BVX crisis chronology, JST Macrohistory, BIS total credit,
-                 BIS property prices, IMF Global Debt Database, IMF share
-                 prices, OECD share prices, OECD house prices, World Bank WDI
+Pipeline stages:
+1. config        -- create the _data and _output directories
+2. pull          -- download every raw source (all free, no API keys): BVX
+                    crisis chronology, JST Macrohistory, CRSP US Banks
+                    portfolio (Ken French Data Library), BIS total credit,
+                    BIS property prices, IMF Global Debt Database, IMF share
+                    prices, OECD share prices, OECD house prices, and World
+                    Bank WDI
+3. tidy          -- clean the pulled data into tidy panels (deflators, crisis
+                    chronologies, credit, equity, house prices) and build the
+                    shared analysis panel (rzone_analysis_panel.parquet)
+4. analysis      -- build every exhibit from the panel: Table 1 and the
+                    cutoff comparison, descriptive outputs (Figure 1, R-zone
+                    timelines, the post-2016 tracker), Table 3, Table 4,
+                    Figure 3, the tolerance validation, the extension
+                    outputs, the post-publication exhibits, the data
+                    overview, and the final-report fragments
+5. compile_latex -- compile the per-exhibit preview PDFs and the final report
+6. run_notebooks -- convert, execute, and render the project-tour notebook
+7. run_pytest    -- run the test suite, writing junit XML to _output
 
+The chain is linear through analysis; compile_latex and run_notebooks branch
+off the analysis outputs, and run_pytest's artifact-dependent tests skip when
+outputs are not yet built.
+
+Running tasks:
+
+    doit                            # run everything that is out of date
+    doit list --all                 # every task and subtask with its one-line doc
+    doit list --all --status        # same, with up-to-date (U) / needs-run (R) marks
+    doit pull                       # one stage (runs all of its subtasks)
+    doit pull:bvx_crises            # one subtask
+    doit analysis:post_publication compile_latex:final_report
+                                    # several tasks in one call
+    doit forget pull:jst_macrohistory
+                                    # drop a task's recorded state, forcing a redo
+    doit clean analysis             # delete a task's declared output files
+
+A task re-runs only when one of its file dependencies changed (doit compares
+checksums, not timestamps) or one of its targets is missing; otherwise it is
+skipped as up to date. Each subtask's own one-line description lives in its
+task dictionary below and is what `doit list` prints.
 """
 
 #######################################

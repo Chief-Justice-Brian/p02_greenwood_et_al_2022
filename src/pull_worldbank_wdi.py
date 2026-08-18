@@ -8,6 +8,7 @@ Indicators pulled (World Bank API v2, free, no key):
 
 ``FP.CPI.TOTL``
     Consumer price index (2010 = 100). Deflates the asset price indices.
+
 ``NY.GDP.MKTP.CN``
     GDP, current local currency units. Scales the credit aggregates.
 
@@ -48,29 +49,37 @@ WDI_INDICATORS = {
     "NY.GDP.MKTP.CN": "GDP, current local currency",
 }
 
-# The v2 API pages its JSON responses; 20,000 rows per page keeps each
-# indicator (every economy x every year in the request window) to a couple
-# of pages
+# 20,000 rows per page keeps each indicator to a few API requests.
 ROWS_PER_PAGE = 20000
 
 
 def pull_wdi_indicator(indicator_code, start_year=1950, end_year=2026):
-    """Pull one WDI indicator for all countries into a long DataFrame."""
+    """Pull one WDI indicator into long format.
+
+    :param indicator_code: WDI indicator id inserted in the API path, one of
+        the WDI_INDICATORS keys (e.g. ``FP.CPI.TOTL``).
+    :param start_year: first year of the requested date window (inclusive).
+    :param end_year: last year of the requested date window (inclusive).
+    :returns: long DataFrame with one row per country-year for the indicator.
+    """
     rows = []
     page = 1
+
     while True:
         url = (
             f"{WORLDBANK_API_BASE}/{indicator_code}"
             f"?format=json&per_page={ROWS_PER_PAGE}&page={page}"
             f"&date={start_year}:{end_year}"
         )
+
         response = requests.get(url, timeout=120)
         response.raise_for_status()
-        header, records = response.json()
+        metadata, records = response.json()
 
         for record in records:
             if record["value"] is None:
                 continue
+
             rows.append(
                 {
                     "country_iso3": record["countryiso3code"],
@@ -80,27 +89,36 @@ def pull_wdi_indicator(indicator_code, start_year=1950, end_year=2026):
                 }
             )
 
-        if page >= header["pages"]:
+        if page >= metadata["pages"]:
             break
+
         page += 1
 
-    indicator_df = pd.DataFrame(rows)
-    return indicator_df
+    return pd.DataFrame(rows)
 
 
 def pull_worldbank_wdi(indicator_codes=tuple(WDI_INDICATORS)):
-    """Pull all WDI indicators and stack them into one long DataFrame."""
+    """Pull all WDI indicators and stack them into one long DataFrame.
+
+    :param indicator_codes: iterable of WDI indicator ids to pull (defaults
+        to all the WDI_INDICATORS keys).
+    :returns: one long DataFrame with all indicators stacked.
+    """
     indicator_frames = []
+
     for indicator_code in indicator_codes:
         indicator_df = pull_wdi_indicator(indicator_code)
         indicator_frames.append(indicator_df)
 
-    wdi_df = pd.concat(indicator_frames, ignore_index=True)
-    return wdi_df
+    return pd.concat(indicator_frames, ignore_index=True)
 
 
 def load_worldbank_wdi(data_dir=DATA_DIR):
-    """Load the WDI long panel: country_iso3 | year | indicator | value."""
+    """Load the WDI long panel: one row per country-indicator-year.
+
+    :param data_dir: directory holding the project's parquet files (defaults
+        to the configured DATA_DIR).
+    """
     return pd.read_parquet(Path(data_dir) / WORLDBANK_WDI_FILENAME)
 
 
@@ -112,5 +130,6 @@ if __name__ == "__main__":
     wdi_df.to_parquet(data_dir / WORLDBANK_WDI_FILENAME)
 
     coverage = wdi_df.groupby("indicator")["country_iso3"].nunique()
+
     print(f"Saved worldbank_wdi.parquet: {wdi_df.shape}")
     print(f"Economies per indicator:\n{coverage}")

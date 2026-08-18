@@ -10,6 +10,11 @@ OUTPUT_DIR = Path(config("OUTPUT_DIR"))
 
 
 def _stars(p_value: float) -> str:
+    """Return significance stars at the 1/5/10 percent levels.
+
+    :param p_value: two-sided p-value; NaN yields no stars.
+    :returns: the significance stars.
+    """
     if pd.isna(p_value):
         return ""
     if p_value < 0.01:
@@ -22,11 +27,22 @@ def _stars(p_value: float) -> str:
 
 
 def _estimate(value: float, p_value: float) -> str:
+    """Format a point estimate with LaTeX superscript significance stars.
+
+    :param value: point estimate, printed with one decimal place.
+    :param p_value: two-sided p-value that determines the stars.
+    """
     stars = _stars(p_value)
     return f"{value:.1f}" + (rf"\textsuperscript{{{stars}}}" if stars else "")
 
 
 def validation_summary() -> str:
+    """Build the LaTeX tabular of per-exhibit benchmark pass rates.
+
+    Reads replication_validation.csv.
+
+    :returns: the tabular as a string.
+    """
     validation = pd.read_csv(OUTPUT_DIR / "replication_validation.csv")
     summary = (
         validation.groupby("exhibit", sort=False)["within_tolerance"]
@@ -58,6 +74,11 @@ def validation_summary() -> str:
 
 
 def fragility_summary() -> str:
+    """Build the LaTeX tabular of horizon-3 fragility interaction estimates.
+
+    Shows the high-fragility and R-Zone x fragility coefficients plus the
+    baseline and extended within-R2 for each sector and measure.
+    """
     coefficients = pd.read_csv(OUTPUT_DIR / "fragility_regression_coefficients.csv")
     models = pd.read_csv(OUTPUT_DIR / "fragility_regression_models.csv")
     lines = [
@@ -114,6 +135,11 @@ def fragility_summary() -> str:
 
 
 def dynamic_summary() -> str:
+    """Build the LaTeX tabular racing the static and autoregressive models.
+
+    Reports the R-Zone coefficient, within-R2, and in-sample AUC for both
+    specifications at every sector and horizon.
+    """
     coefficients = pd.read_csv(OUTPUT_DIR / "dynamic_regression_coefficients.csv")
     models = pd.read_csv(OUTPUT_DIR / "dynamic_regression_models.csv")
     lines = [
@@ -170,6 +196,11 @@ def dynamic_summary() -> str:
 
 
 def missed_crises() -> str:
+    """Build the LaTeX longtable of crises neither R-Zone preceded.
+
+    Lists each missed crisis with its prior-three-year bank-fragility
+    percentiles; dashes mark unavailable JST banking data.
+    """
     data = pd.read_csv(OUTPUT_DIR / "missed_crisis_fragility.csv")
     data = data.loc[data["missed_by_rzone"]].copy()
     lines = [
@@ -186,6 +217,10 @@ def missed_crises() -> str:
     ]
 
     def percentile(value: float) -> str:
+        """Format a percentile, printing a dash when the value is missing.
+
+        :param value: percentile on the 0-100 scale, or NaN when unavailable.
+        """
         return "--" if pd.isna(value) else f"{value:.1f}"
 
     for row in data.itertuples(index=False):
@@ -201,6 +236,7 @@ def missed_crises() -> str:
 
 
 def tracker_summary() -> str:
+    """Build the LaTeX tabular of annual R-Zone counts for 2017-2025."""
     tracker = pd.read_csv(OUTPUT_DIR / "post_2016_rzone_tracker.csv")
     rows = []
     for year in range(2017, 2026):
@@ -232,6 +268,7 @@ def tracker_summary() -> str:
 
 
 def usa_case_study() -> str:
+    """Build the LaTeX tabular of the US 2019-2023 predictor and R-Zone path."""
     data = pd.read_csv(OUTPUT_DIR / "usa_2023_case_study.csv")
     lines = [
         r"\begin{tabular}{rrrrrrr}",
@@ -252,6 +289,7 @@ def usa_case_study() -> str:
 
 
 def main() -> None:
+    """Write every final-report LaTeX fragment to OUTPUT_DIR."""
     fragments = {
         "report_validation_summary.tex": validation_summary(),
         "report_fragility_summary.tex": fragility_summary(),

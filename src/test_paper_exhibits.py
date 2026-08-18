@@ -47,6 +47,8 @@ def _assert_all_within_tolerance(rows: list[dict]) -> None:
 
 
 def test_table1_all_published_rows_within_documented_tolerances():
+    # Every published Table 1 statistic and cutoff must replicate within its
+    # documented tolerance; the cutoffs gate every downstream exhibit.
     _assert_all_within_tolerance(
         validate_table1(
             pd.read_csv(OUTPUT_DIR / "table1_stats.csv"),
@@ -56,12 +58,16 @@ def test_table1_all_published_rows_within_documented_tolerances():
 
 
 def test_table3_all_cells_within_documented_tolerances():
+    # Every transcribed Table 3 crisis-probability cell must replicate within
+    # tolerance, including the headline R-zone corner probabilities.
     _assert_all_within_tolerance(
         validate_table3(pd.read_csv(OUTPUT_DIR / "table3_crisis_probabilities.csv"))
     )
 
 
 def test_table4_all_coefficients_and_model_statistics_within_tolerances():
+    # Table 4's regression coefficients and model statistics must match the
+    # paper within tolerance, confirming the predictive result replicates.
     _assert_all_within_tolerance(
         validate_table4(
             pd.read_csv(OUTPUT_DIR / "table4_baseline_coefficients.csv"),
@@ -71,10 +77,14 @@ def test_table4_all_coefficients_and_model_statistics_within_tolerances():
 
 
 def test_figure1_underlying_event_series_within_documented_tolerances():
+    # The crisis and R-zone event series behind Figure 1 must match the
+    # paper's plotted episodes closely enough to reproduce the event history.
     _assert_all_within_tolerance(validate_figure1(load_analysis_panel(DATA_DIR)))
 
 
 def test_figure3_underlying_annual_series_within_documented_tolerances():
+    # The annual fraction-of-countries-in-the-R-zone series behind Figure 3
+    # must track the paper's published global overheating index.
     _assert_all_within_tolerance(
         validate_figure3(pd.read_csv(OUTPUT_DIR / "figure3_global_rzone.csv"))
     )
