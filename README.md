@@ -40,6 +40,108 @@ Run the unit tests alone with:
 pytest
 ```
 
+The main generated artifacts are:
+
+- `_data/rzone_analysis_panel.parquet`: unified 42-country historical and
+  post-2016 panel;
+- `_output/table1_stats.csv` and `_output/table1_cutoffs.csv`: replication
+  validation;
+- `_output/table3_crisis_probabilities.csv`: Table 3 quantile cells, crisis
+  frequencies, and differences from the median cell;
+- `_output/figure1_event_history.pdf`: combined business and household
+  historical R-zone event-history panels;
+- `_output/table4_baseline_*.csv`: country-fixed-effects baseline models;
+- `_output/post_2016_rzone_tracker.csv`: classifications using frozen
+  historical cutoffs;
+- `_output/fragility_*.csv`, `_output/dynamic_*.csv`, and
+  `_output/missed_crisis_fragility.csv`: extension results.
+- `_output/replication_validation.csv`: every published benchmark, replicated
+  value, documented tolerance, numerical gap, and pass/fail result for Tables
+  1, 3, and 4 and Figures 1 and 3.
+
+The historical replication is kept separate from the post-publication update.
+Build the post-publication exhibits with:
+
+```bash
+doit analysis:post_publication
+doit compile_latex:table1_post_publication_preview \
+     compile_latex:table3_post_publication_preview \
+     compile_latex:table4_post_publication_preview \
+     compile_latex:figure3_post_publication_preview
+```
+
+The post_publication task writes separately labelled Table 1, Table 3, Table 4,
+Figure 1, and Figure 3 files (names containing `post_publication`) plus
+`_output/post_publication_data_coverage.csv`. The `post_publication_*` files are
+the rubric's "reproduce with updated numbers" deliverable: the same exhibits
+recomputed with the data that arrived after the paper's sample ends. They
+complement the historical replication files and do not supersede them.
+Predictor and R-Zone series extend through
+2025. Crisis outcomes are `crisis_bvx_extended`: BVX through 2016, then our
+own application of BVX's stated criteria (30%+ bank equity decline plus
+narrative failures/panic) for 2017--2025, so "crisis" means the same thing in
+every year of the panel. The last valid forecast origins are 2024, 2023,
+2022, and 2021 for horizons one through four, and historical R-Zone
+thresholds remain frozen.
+
+The equity criterion is decided by pulled data rather than asserted, using
+the CRSP value-weighted Banks portfolio from the Ken French Data Library,
+which tracks the paper's own US bank equity series over their post-war
+overlap. Under that paper-faithful broad index the March 2023 US episode
+falls short of the 30% bar (the crash concentrated in regional banks while
+the largest institutions rallied), so the sample records no post-2016 onset
+and the report presents 2023 as a documented borderline call. The candidate
+episodes and their verdicts are written to
+`_output/post_publication_crisis_screen.csv` and `.tex`.
+
+The required original data-understanding exhibit is separate from every paper
+replication. Build and open its captioned LaTeX report with:
+
+```bash
+doit analysis:data_overview compile_latex:data_overview
+open reports/data_overview.pdf
+```
+
+It contains an original summary-statistics table comparing 1950–2012 with
+2013–2025 and an original three-panel chart of predictor coverage and the joint
+growth distributions behind the R-Zone classification.
+
+Build the single narrative report containing the historical replication,
+post-publication update, original data overview, and extensions with:
+
+```bash
+doit analysis:final_report compile_latex:final_report
+open reports/final_report.pdf
+```
+
+The report contains no code listings. Its text explains the project's nature,
+data sources, methods, successful replication results, remaining discrepancies,
+modern-update limitations, and the interpretation of every included table and
+figure.
+
+An executable Jupyter notebook provides an HW-guide-style tour of the cleaned
+panel and analysis. Build and open it with:
+
+```bash
+doit run_notebooks:01_predictable_financial_crises_project_tour.ipynb.py
+open _output/01_predictable_financial_crises_project_tour.html
+```
+
+The notebook covers panel keys and coverage, source splicing, sample flags,
+three-year growth, frozen quantile thresholds, R-Zone assignment, descriptive
+cells, fixed-effects regressions, the update through 2025, extensions, and the
+replication-tolerance audit.
+
+Run the paper-benchmark validation gate directly with:
+
+```bash
+doit analysis:validation
+pytest -q src/test_paper_exhibits.py
+```
+
+See `docs_src/project_overview/methodology.md` for the sample, splicing, and
+missing-data rules.
+
 ## Data Sources
 
 With one exception, every source in our pipeline is one the paper itself
@@ -87,8 +189,32 @@ IMF stopped collecting share prices in 2017.
 | BIS Residential Property Prices | House prices: **primary** | Same | `src/pull_bis_property_prices.py` |
 | OECD Analytical House Prices | House prices: supplement (their footnote 7) | Same | `src/pull_oecd_house_prices.py` |
 | World Bank WDI | Inflation + GDP | Same | `src/pull_worldbank_wdi.py` |
+| CRSP US Banks portfolio (Ken French Data Library) | — | Bank equity criterion for the BVX-criteria crisis extension; validated against BVX's own US series | `src/pull_us_bank_equity.py` |
 
 Since our non-equity data sources are identical to the original paper (vintages aside), substitution risk is isolated to the equity column. This explains why our only deviation from Table 1 occurs in equity standard deviation (46.8 vs. 48.8)—an expected result given our reliance on free alternatives to the paper's paid equity sources.
+
+### Why the BVX chronology is extended ourselves instead of with Laeven--Valencia
+
+The paper's crisis labels come from Baron--Verner--Xiong, whose published list
+ends in 2016. We do not continue it with the IMF's Laeven--Valencia chronology,
+for two reasons. First, the two are built from different rules: BVX identify a
+crisis from a 30%+ bank equity index decline plus narrative evidence of
+widespread failures or panics, while Laeven--Valencia additionally require
+significant policy intervention. A chronology is only comparable over time
+when every year is judged by the same rule, and these rules disagree even
+about the same historical years: the US in 1984 (Continental Illinois) is a
+crisis under BVX but not under Laeven--Valencia. They split on exactly the
+episode shape that March 2023 produced, so appending Laeven--Valencia would
+change what "crisis = 1" means at the 2017 seam. Second, this project's data
+policy is published datasets only, and the IMF publishes the Laeven--Valencia
+chronology only as tables inside a working paper, with no data file.
+
+Instead, `crisis_bvx_extended` re-applies BVX's own published criteria to new
+published data (the CRSP bank portfolio plus a documented narrative screen).
+The IMF chronology is cited in the final report as corroborating context --
+it reaches the same no-post-2016-onset conclusion by its own route -- but it
+is not a data input. The 2023 US episode is the documented borderline call
+(see the crisis-screen table in the final report).
 
 ## Formatting
 

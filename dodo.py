@@ -1,13 +1,48 @@
 """Run or update the project. This file uses the `doit` Python package. It works
 like a Makefile, but is Python-based.
 
-Pipeline stages (each stage only depends on the previous one):
-1. config     -- create _data/_output directories
-2. pull       -- download every raw data source (all free, no API keys):
-                 BVX crisis chronology, JST Macrohistory, BIS total credit,
-                 BIS property prices, IMF Global Debt Database, IMF share
-                 prices, OECD share prices, OECD house prices, World Bank WDI
+Pipeline stages:
+1. config        -- create the _data and _output directories
+2. pull          -- download every raw source (all free, no API keys): BVX
+                    crisis chronology, JST Macrohistory, CRSP US Banks
+                    portfolio (Ken French Data Library), BIS total credit,
+                    BIS property prices, IMF Global Debt Database, IMF share
+                    prices, OECD share prices, OECD house prices, and World
+                    Bank WDI
+3. tidy          -- clean the pulled data into tidy panels (deflators, crisis
+                    chronologies, credit, equity, house prices) and build the
+                    shared analysis panel (rzone_analysis_panel.parquet)
+4. analysis      -- build every exhibit from the panel: Table 1 and the
+                    cutoff comparison, descriptive outputs (Figure 1, R-zone
+                    timelines, the post-2016 tracker), Table 3, Table 4,
+                    Figure 3, the tolerance validation, the extension
+                    outputs, the post-publication exhibits, the data
+                    overview, and the final-report fragments
+5. compile_latex -- compile the per-exhibit preview PDFs and the final report
+6. run_notebooks -- convert, execute, and render the project-tour notebook
+7. run_pytest    -- run the test suite, writing junit XML to _output
 
+The chain is linear through analysis; compile_latex and run_notebooks branch
+off the analysis outputs, and run_pytest's artifact-dependent tests skip when
+outputs are not yet built.
+
+Running tasks:
+
+    doit                            # run everything that is out of date
+    doit list --all                 # every task and subtask with its one-line doc
+    doit list --all --status        # same, with up-to-date (U) / needs-run (R) marks
+    doit pull                       # one stage (runs all of its subtasks)
+    doit pull:bvx_crises            # one subtask
+    doit analysis:post_publication compile_latex:final_report
+                                    # several tasks in one call
+    doit forget pull:jst_macrohistory
+                                    # drop a task's recorded state, forcing a redo
+    doit clean analysis             # delete a task's declared output files
+
+A task re-runs only when one of its file dependencies changed (doit compares
+checksums, not timestamps) or one of its targets is missing; otherwise it is
+skipped as up to date. Each subtask's own one-line description lives in its
+task dictionary below and is what `doit list` prints.
 """
 
 #######################################
@@ -36,6 +71,10 @@ OS_TYPE = config("OS_TYPE")
 
 ## Helpers for handling Jupyter Notebook tasks
 environ["PYDEVD_DISABLE_FILE_VALIDATION"] = "1"
+environ["JUPYTER_DATA_DIR"] = str(OUTPUT_DIR / ".jupyter")
+environ["JUPYTER_RUNTIME_DIR"] = str(OUTPUT_DIR / ".jupyter" / "runtime")
+environ["IPYTHONDIR"] = str(OUTPUT_DIR / ".ipython")
+
 
 # fmt: off
 ## Helper functions for automatic execution of Jupyter notebooks
@@ -108,6 +147,11 @@ pull_tasks = {
         "doc": "Jorda-Schularick-Taylor Macrohistory panel (R6)",
         "outputs": ["jst_macrohistory.parquet"],
     },
+    "us_bank_equity": {
+        "script": "pull_us_bank_equity.py",
+        "doc": "CRSP US Banks portfolio, daily (Ken French Data Library)",
+        "outputs": ["us_bank_equity.parquet"],
+    },
     "bis_total_credit": {
         "script": "pull_bis_total_credit.py",
         "doc": "BIS total credit to households and non-financial corporates",
@@ -164,6 +208,7 @@ TIDY_HELPER_MODULES = [
     "./src/settings.py",
     "./src/country_sample.py",
     "./src/panel_utils.py",
+    "./src/rzone_features.py",
 ]
 
 # The tidy-data stage: each entry cleans pulled sources into one tidy panel.
@@ -255,6 +300,7 @@ def task_analysis():
         "actions": ["python ./src/table1_summary_stats.py"],
         "targets": [
             OUTPUT_DIR / "table1_stats.csv",
+            OUTPUT_DIR / "table1_cutoffs.csv",
             OUTPUT_DIR / "table1_summary_stats.tex",
             OUTPUT_DIR / "table1_comparison.tex",
         ],
@@ -263,6 +309,222 @@ def task_analysis():
             "./src/paper_benchmarks.py",
             "./src/settings.py",
             DATA_DIR / "rzone_analysis_panel.parquet",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "descriptive",
+        "doc": "Raw quantile cells, R-zone validation, timeline, and modern tracker",
+        "actions": ["python ./src/descriptive_results.py"],
+        "targets": [
+            OUTPUT_DIR / "table3_cell_frequencies_raw.csv",
+            OUTPUT_DIR / "rzone_validation.csv",
+            OUTPUT_DIR / "post_2016_rzone_tracker.csv",
+            OUTPUT_DIR / "historical_business_rzone_timeline.png",
+            OUTPUT_DIR / "historical_household_rzone_timeline.png",
+            OUTPUT_DIR / "figure1_event_history.png",
+            OUTPUT_DIR / "figure1_event_history.pdf",
+        ],
+        "file_dep": [
+            "./src/descriptive_results.py",
+            "./src/settings.py",
+            DATA_DIR / "rzone_analysis_panel.parquet",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "table3",
+        "doc": "Publication-style Table 3 cells, inference, and LaTeX",
+        "actions": ["python ./src/table3_results.py"],
+        "targets": [
+            OUTPUT_DIR / "table3_crisis_probabilities.csv",
+            OUTPUT_DIR / "table3_replication.tex",
+        ],
+        "file_dep": [
+            "./src/table3_results.py",
+            "./src/baseline_regressions.py",
+            DATA_DIR / "rzone_analysis_panel.parquet",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "baseline_regressions",
+        "doc": "Table 4 country-FE linear probability models with DK errors",
+        "actions": ["python ./src/baseline_regressions.py"],
+        "targets": [
+            OUTPUT_DIR / "table4_baseline_coefficients.csv",
+            OUTPUT_DIR / "table4_baseline_models.csv",
+        ],
+        "file_dep": [
+            "./src/baseline_regressions.py",
+            "./src/settings.py",
+            DATA_DIR / "rzone_analysis_panel.parquet",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "table4",
+        "doc": "Publication-style Table 4 regression LaTeX",
+        "actions": ["python ./src/table4_results.py"],
+        "targets": [OUTPUT_DIR / "table4_replication.tex"],
+        "file_dep": [
+            "./src/table4_results.py",
+            OUTPUT_DIR / "table4_baseline_coefficients.csv",
+            OUTPUT_DIR / "table4_baseline_models.csv",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "figure3",
+        "doc": "Figure 3 annual fraction of countries in each R-Zone",
+        "actions": ["python ./src/figure3_global_rzone.py"],
+        "targets": [
+            OUTPUT_DIR / "figure3_global_rzone.csv",
+            OUTPUT_DIR / "figure3_fraction_countries_rzone.png",
+            OUTPUT_DIR / "figure3_fraction_countries_rzone.pdf",
+            OUTPUT_DIR / "figure3_fraction_countries_rzone.jpg",
+        ],
+        "file_dep": [
+            "./src/figure3_global_rzone.py",
+            "./src/settings.py",
+            DATA_DIR / "rzone_analysis_panel.parquet",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "validation",
+        "doc": "Tolerance-based validation of Tables 1/3/4 and Figures 1/3",
+        "actions": ["python ./src/replication_validation.py"],
+        "targets": [OUTPUT_DIR / "replication_validation.csv"],
+        "file_dep": [
+            "./src/replication_validation.py",
+            "./src/exhibit_benchmarks.py",
+            "./src/paper_benchmarks.py",
+            OUTPUT_DIR / "table1_stats.csv",
+            OUTPUT_DIR / "table1_cutoffs.csv",
+            OUTPUT_DIR / "table3_crisis_probabilities.csv",
+            OUTPUT_DIR / "table4_baseline_coefficients.csv",
+            OUTPUT_DIR / "table4_baseline_models.csv",
+            OUTPUT_DIR / "figure3_global_rzone.csv",
+            DATA_DIR / "rzone_analysis_panel.parquet",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "extensions",
+        "doc": "Fragility, missed-crisis, dynamic, and 2023 extension outputs",
+        "actions": ["python ./src/extension_results.py"],
+        "targets": [
+            OUTPUT_DIR / "fragility_regression_coefficients.csv",
+            OUTPUT_DIR / "fragility_regression_models.csv",
+            OUTPUT_DIR / "fragility_continuous_coefficients.csv",
+            OUTPUT_DIR / "fragility_continuous_models.csv",
+            OUTPUT_DIR / "fragility_form_checks_coefficients.csv",
+            OUTPUT_DIR / "fragility_form_checks_models.csv",
+            OUTPUT_DIR / "rzone_exit_coefficients.csv",
+            OUTPUT_DIR / "rzone_exit_models.csv",
+            OUTPUT_DIR / "fragility_threshold_sweep.csv",
+            OUTPUT_DIR / "fragility_correlations.csv",
+            OUTPUT_DIR / "dynamic_regression_coefficients.csv",
+            OUTPUT_DIR / "dynamic_regression_models.csv",
+            OUTPUT_DIR / "missed_crisis_fragility.csv",
+            OUTPUT_DIR / "usa_2023_case_study.csv",
+        ],
+        "file_dep": [
+            "./src/extension_results.py",
+            "./src/baseline_regressions.py",
+            "./src/settings.py",
+            DATA_DIR / "rzone_analysis_panel.parquet",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "post_publication",
+        "doc": "Post-publication Tables 1/3/4 and Figures 1/3 through latest valid year",
+        "actions": ["python ./src/post_publication_results.py"],
+        "targets": [
+            OUTPUT_DIR / "post_publication_data_coverage.csv",
+            OUTPUT_DIR / "table1_post_publication_stats.csv",
+            OUTPUT_DIR / "table1_post_publication_quantiles.csv",
+            OUTPUT_DIR / "table1_post_publication.tex",
+            OUTPUT_DIR / "table3_post_publication_crisis_probabilities.csv",
+            OUTPUT_DIR / "table3_post_publication.tex",
+            OUTPUT_DIR / "table4_post_publication_coefficients.csv",
+            OUTPUT_DIR / "table4_post_publication_models.csv",
+            OUTPUT_DIR / "table4_post_publication.tex",
+            OUTPUT_DIR / "post_publication_business_rzone_timeline.png",
+            OUTPUT_DIR / "post_publication_household_rzone_timeline.png",
+            OUTPUT_DIR / "figure1_event_history_post_publication.png",
+            OUTPUT_DIR / "figure1_event_history_post_publication.pdf",
+            OUTPUT_DIR / "figure3_global_rzone_post_publication.csv",
+            OUTPUT_DIR / "figure3_fraction_countries_rzone_post_publication.png",
+            OUTPUT_DIR / "figure3_fraction_countries_rzone_post_publication.pdf",
+            OUTPUT_DIR / "figure3_fraction_countries_rzone_post_publication.jpg",
+            OUTPUT_DIR / "post_publication_crisis_screen.csv",
+            OUTPUT_DIR / "post_publication_crisis_screen.tex",
+        ],
+        "file_dep": [
+            "./src/post_publication_results.py",
+            "./src/post_publication_crisis_chronology.py",
+            "./src/pull_us_bank_equity.py",
+            "./src/descriptive_results.py",
+            "./src/figure3_global_rzone.py",
+            "./src/table3_results.py",
+            "./src/table4_results.py",
+            "./src/baseline_regressions.py",
+            DATA_DIR / "us_bank_equity.parquet",
+            DATA_DIR / "rzone_analysis_panel.parquet",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "data_overview",
+        "doc": "Original summary table and diagnostic chart for underlying data",
+        "actions": ["python ./src/data_overview.py"],
+        "targets": [
+            OUTPUT_DIR / "data_overview_summary.csv",
+            OUTPUT_DIR / "data_overview_summary.tex",
+            OUTPUT_DIR / "data_overview_figure.png",
+            OUTPUT_DIR / "data_overview_figure.pdf",
+            OUTPUT_DIR / "data_overview_figure.jpg",
+        ],
+        "file_dep": [
+            "./src/data_overview.py",
+            "./src/settings.py",
+            DATA_DIR / "rzone_analysis_panel.parquet",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "final_report",
+        "doc": "Build summary fragments for the single final LaTeX report",
+        "actions": ["python ./src/final_report_results.py"],
+        "targets": [
+            OUTPUT_DIR / "report_validation_summary.tex",
+            OUTPUT_DIR / "report_fragility_summary.tex",
+            OUTPUT_DIR / "report_fragility_continuous.tex",
+            OUTPUT_DIR / "report_fragility_form_checks.tex",
+            OUTPUT_DIR / "report_rzone_exit.tex",
+            OUTPUT_DIR / "report_footnote10_verdict.tex",
+            OUTPUT_DIR / "report_dynamic_summary.tex",
+            OUTPUT_DIR / "report_missed_crises.tex",
+            OUTPUT_DIR / "report_tracker_summary.tex",
+            OUTPUT_DIR / "report_usa_case_study.tex",
+        ],
+        "file_dep": [
+            "./src/final_report_results.py",
+            OUTPUT_DIR / "replication_validation.csv",
+            OUTPUT_DIR / "fragility_regression_coefficients.csv",
+            OUTPUT_DIR / "fragility_regression_models.csv",
+            OUTPUT_DIR / "fragility_continuous_coefficients.csv",
+            OUTPUT_DIR / "fragility_continuous_models.csv",
+            OUTPUT_DIR / "fragility_form_checks_coefficients.csv",
+            OUTPUT_DIR / "rzone_exit_coefficients.csv",
+            OUTPUT_DIR / "dynamic_regression_coefficients.csv",
+            OUTPUT_DIR / "dynamic_regression_models.csv",
+            OUTPUT_DIR / "missed_crisis_fragility.csv",
+            OUTPUT_DIR / "post_2016_rzone_tracker.csv",
+            OUTPUT_DIR / "usa_2023_case_study.csv",
         ],
         "clean": True,
     }
@@ -285,16 +547,193 @@ def task_compile_latex():
         ],
         "clean": True,
     }
+    yield {
+        "name": "table3_preview",
+        "doc": "Viewable PDF of the Table 3 replication",
+        "actions": [
+            "latexmk -pdf -halt-on-error -cd ./reports/table3_preview.tex",
+            "latexmk -pdf -halt-on-error -c -cd ./reports/table3_preview.tex",
+        ],
+        "targets": ["./reports/table3_preview.pdf"],
+        "file_dep": [
+            "./reports/table3_preview.tex",
+            OUTPUT_DIR / "table3_replication.tex",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "table4_preview",
+        "doc": "Viewable PDF of the Table 4 replication",
+        "actions": [
+            "latexmk -pdf -halt-on-error -cd ./reports/table4_preview.tex",
+            "latexmk -pdf -halt-on-error -c -cd ./reports/table4_preview.tex",
+        ],
+        "targets": ["./reports/table4_preview.pdf"],
+        "file_dep": [
+            "./reports/table4_preview.tex",
+            OUTPUT_DIR / "table4_replication.tex",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "figure3_preview",
+        "doc": "Viewable PDF of Figure 3 with definition and notes",
+        "actions": [
+            "latexmk -pdf -halt-on-error -cd ./reports/figure3_preview.tex",
+            "latexmk -pdf -halt-on-error -c -cd ./reports/figure3_preview.tex",
+        ],
+        "targets": ["./reports/figure3_preview.pdf"],
+        "file_dep": [
+            "./reports/figure3_preview.tex",
+            OUTPUT_DIR / "figure3_fraction_countries_rzone.jpg",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "table1_post_publication_preview",
+        "doc": "Viewable PDF of post-publication Table 1",
+        "actions": [
+            "latexmk -pdf -halt-on-error -cd ./reports/table1_post_publication_preview.tex",
+            "latexmk -pdf -halt-on-error -c -cd ./reports/table1_post_publication_preview.tex",
+        ],
+        "targets": ["./reports/table1_post_publication_preview.pdf"],
+        "file_dep": [
+            "./reports/table1_post_publication_preview.tex",
+            OUTPUT_DIR / "table1_post_publication.tex",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "table3_post_publication_preview",
+        "doc": "Viewable PDF of post-publication Table 3",
+        "actions": [
+            "latexmk -pdf -halt-on-error -cd ./reports/table3_post_publication_preview.tex",
+            "latexmk -pdf -halt-on-error -c -cd ./reports/table3_post_publication_preview.tex",
+        ],
+        "targets": ["./reports/table3_post_publication_preview.pdf"],
+        "file_dep": [
+            "./reports/table3_post_publication_preview.tex",
+            OUTPUT_DIR / "table3_post_publication.tex",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "table4_post_publication_preview",
+        "doc": "Viewable PDF of post-publication Table 4",
+        "actions": [
+            "latexmk -pdf -halt-on-error -cd ./reports/table4_post_publication_preview.tex",
+            "latexmk -pdf -halt-on-error -c -cd ./reports/table4_post_publication_preview.tex",
+        ],
+        "targets": ["./reports/table4_post_publication_preview.pdf"],
+        "file_dep": [
+            "./reports/table4_post_publication_preview.tex",
+            OUTPUT_DIR / "table4_post_publication.tex",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "figure3_post_publication_preview",
+        "doc": "Viewable PDF of post-publication Figure 3",
+        "actions": [
+            "latexmk -pdf -halt-on-error -cd ./reports/figure3_post_publication_preview.tex",
+            "latexmk -pdf -halt-on-error -c -cd ./reports/figure3_post_publication_preview.tex",
+        ],
+        "targets": ["./reports/figure3_post_publication_preview.pdf"],
+        "file_dep": [
+            "./reports/figure3_post_publication_preview.tex",
+            OUTPUT_DIR / "figure3_fraction_countries_rzone_post_publication.jpg",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "data_overview",
+        "doc": "Typeset original data-overview table and figure with captions",
+        "actions": [
+            "latexmk -pdf -halt-on-error -cd ./reports/data_overview.tex",
+            "latexmk -pdf -halt-on-error -c -cd ./reports/data_overview.tex",
+        ],
+        "targets": ["./reports/data_overview.pdf"],
+        "file_dep": [
+            "./reports/data_overview.tex",
+            OUTPUT_DIR / "data_overview_summary.tex",
+            OUTPUT_DIR / "data_overview_figure.jpg",
+        ],
+        "clean": True,
+    }
+    yield {
+        "name": "final_report",
+        "doc": "Single narrative PDF with every final historical and post-publication exhibit",
+        "actions": [
+            "latexmk -pdf -halt-on-error -cd ./reports/final_report.tex",
+            "latexmk -pdf -halt-on-error -c -cd ./reports/final_report.tex",
+        ],
+        "targets": ["./reports/final_report.pdf"],
+        "file_dep": [
+            "./reports/final_report.tex",
+            OUTPUT_DIR / "data_overview_summary.tex",
+            OUTPUT_DIR / "data_overview_figure.jpg",
+            OUTPUT_DIR / "table1_summary_stats.tex",
+            OUTPUT_DIR / "table1_comparison.tex",
+            OUTPUT_DIR / "table3_replication.tex",
+            OUTPUT_DIR / "table4_replication.tex",
+            OUTPUT_DIR / "figure1_event_history.png",
+            OUTPUT_DIR / "historical_business_rzone_timeline.png",
+            OUTPUT_DIR / "historical_household_rzone_timeline.png",
+            OUTPUT_DIR / "figure3_fraction_countries_rzone.jpg",
+            OUTPUT_DIR / "table1_post_publication.tex",
+            OUTPUT_DIR / "table3_post_publication.tex",
+            OUTPUT_DIR / "table4_post_publication.tex",
+            OUTPUT_DIR / "post_publication_crisis_screen.tex",
+            OUTPUT_DIR / "figure1_event_history_post_publication.png",
+            OUTPUT_DIR / "post_publication_business_rzone_timeline.png",
+            OUTPUT_DIR / "post_publication_household_rzone_timeline.png",
+            OUTPUT_DIR / "figure3_fraction_countries_rzone_post_publication.jpg",
+            OUTPUT_DIR / "report_validation_summary.tex",
+            OUTPUT_DIR / "report_fragility_summary.tex",
+            OUTPUT_DIR / "report_fragility_continuous.tex",
+            OUTPUT_DIR / "report_fragility_form_checks.tex",
+            OUTPUT_DIR / "report_rzone_exit.tex",
+            OUTPUT_DIR / "report_footnote10_verdict.tex",
+            OUTPUT_DIR / "report_dynamic_summary.tex",
+            OUTPUT_DIR / "report_missed_crises.tex",
+            OUTPUT_DIR / "report_tracker_summary.tex",
+            OUTPUT_DIR / "report_usa_case_study.tex",
+        ],
+        "clean": True,
+    }
 
 
 notebook_tasks = {
-    "01_table1_validation_tour.ipynb.py": {
-        "path": "./src/01_table1_validation_tour.ipynb.py",
+    "01_predictable_financial_crises_project_tour.ipynb.py": {
+        "path": "./src/01_predictable_financial_crises_project_tour.ipynb.py",
         "file_dep": [
             "./src/paper_benchmarks.py",
             "./src/build_analysis_panel.py",
+            "./src/table1_summary_stats.py",
+            "./src/post_publication_crisis_chronology.py",
             DATA_DIR / "rzone_analysis_panel.parquet",
+            DATA_DIR / "imf_gdd.parquet",
             OUTPUT_DIR / "table1_stats.csv",
+            OUTPUT_DIR / "rzone_validation.csv",
+            OUTPUT_DIR / "post_2016_rzone_tracker.csv",
+            OUTPUT_DIR / "data_overview_summary.csv",
+            OUTPUT_DIR / "data_overview_figure.png",
+            OUTPUT_DIR / "table3_crisis_probabilities.csv",
+            OUTPUT_DIR / "table4_baseline_coefficients.csv",
+            OUTPUT_DIR / "table4_baseline_models.csv",
+            OUTPUT_DIR / "figure1_event_history.png",
+            OUTPUT_DIR / "post_publication_data_coverage.csv",
+            OUTPUT_DIR / "table4_post_publication_models.csv",
+            OUTPUT_DIR / "figure3_fraction_countries_rzone_post_publication.png",
+            OUTPUT_DIR / "dynamic_regression_models.csv",
+            OUTPUT_DIR / "fragility_threshold_sweep.csv",
+            OUTPUT_DIR / "fragility_correlations.csv",
+            OUTPUT_DIR / "fragility_continuous_coefficients.csv",
+            OUTPUT_DIR / "fragility_form_checks_coefficients.csv",
+            OUTPUT_DIR / "rzone_exit_coefficients.csv",
+            OUTPUT_DIR / "dynamic_regression_coefficients.csv",
+            OUTPUT_DIR / "missed_crisis_fragility.csv",
+            OUTPUT_DIR / "replication_validation.csv",
         ],
         "targets": [],
     },
@@ -306,7 +745,7 @@ def task_run_notebooks():
     """Preps the notebooks for presentation format.
     Execute notebooks if the script version of it has been changed.
     """
-    for notebook in notebook_tasks.keys():
+    for notebook in notebook_tasks:
         pyfile_path = Path(notebook_tasks[notebook]["path"])
         notebook_path = pyfile_path.with_suffix("")  # strips .py, leaves .ipynb
         notebook_name = notebook_path.stem  # e.g. "01_data_tour"
@@ -341,6 +780,7 @@ def task_run_pytest():
     def run_pytest():
         result = subprocess.run(
             ["pytest", f"--junitxml={test_output}"],
+            check=False,
         )
         if result.returncode != 0:
             # Remove the XML so doit won't consider the target up-to-date

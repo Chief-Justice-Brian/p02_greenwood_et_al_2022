@@ -1,0 +1,235 @@
+"""Checks for the separately labelled post-publication exhibit update."""
+
+from pathlib import Path
+
+import pandas as pd
+import pytest
+
+from build_analysis_panel import (
+    analysis_panel_path,
+    latest_predictor_year,
+    load_analysis_panel,
+)
+from data_overview import calculate_data_overview
+from figure3_global_rzone import annual_rzone_fraction
+from post_publication_crisis_chronology import (
+    BVX_EQUITY_DECLINE_THRESHOLD,
+    BVX_EXTENDED_CRISIS_SOURCE,
+    UPDATED_CRISIS_END_YEAR,
+    add_bvx_extended_crisis_series,
+    max_drawdown_in_year,
+)
+from post_publication_results import updated_coverage, updated_table1
+from pull_us_bank_equity import US_BANK_EQUITY_FILENAME, load_us_bank_equity
+from settings import config
+
+DATA_DIR = Path(config("DATA_DIR"))
+OUTPUT_DIR = Path(config("OUTPUT_DIR"))
+PANEL_PATH = analysis_panel_path(DATA_DIR)
+FINAL_REPORT_SOURCE = (
+    Path(__file__).resolve().parents[1] / "reports" / "final_report.tex"
+)
+
+pytestmark = pytest.mark.skipif(
+    not PANEL_PATH.exists(), reason="analysis panel not built yet -- run `doit` first"
+)
+
+
+@pytest.fixture(scope="module")
+def updated_panel():
+    if not (DATA_DIR / US_BANK_EQUITY_FILENAME).exists():
+        pytest.skip("us_bank_equity.parquet not pulled yet -- run `doit` first")
+    return add_bvx_extended_crisis_series(
+        load_analysis_panel(DATA_DIR), load_us_bank_equity(DATA_DIR)
+    )
+
+
+def test_bvx_extended_preserves_bvx_and_lets_the_data_decide_us_2023(updated_panel):
+    # Through 2016 the extended chronology must reproduce BVX exactly; the
+    # update may only append, never rewrite published history.
+    historical = updated_panel["year"].le(2016)
+    pd.testing.assert_series_equal(
+        updated_panel.loc[historical, "crisis_bvx_extended"],
+        updated_panel.loc[historical, "crisis_bvx"],
+        check_names=False,
+        check_dtype=False,
+    )
+    # The US 2023 label must equal what the pulled index implies, so the
+    # classification cannot be authored by hand.
+    drawdown = max_drawdown_in_year(load_us_bank_equity(DATA_DIR), 2023)
+    usa_2023 = updated_panel.loc[
+        updated_panel["country_iso3"].eq("USA") & updated_panel["year"].eq(2023),
+        "crisis_bvx_extended",
+    ].iloc[0]
+    assert usa_2023 == float(drawdown >= BVX_EQUITY_DECLINE_THRESHOLD)
+
+
+def test_extension_window_is_fully_labelled(updated_panel):
+    # No silent gaps a regression could misread as observed non-crises.
+    extension = updated_panel["year"].between(2017, UPDATED_CRISIS_END_YEAR)
+    assert updated_panel.loc[extension, "crisis_bvx_extended"].notna().all()
+    assert (
+        updated_panel["bvx_extended_crisis_source"]
+        .eq(BVX_EXTENDED_CRISIS_SOURCE)
+        .all()
+    )
+
+
+def test_updated_future_outcomes_have_horizon_specific_endpoints(updated_panel):
+    # Each horizon's forward label must stop exactly h years before the
+    # chronology ends, so no origin is scored against unobserved outcomes.
+    for horizon in range(1, 5):
+        observed = updated_panel.loc[
+            updated_panel[f"crisis_bvx_extended_next_{horizon}y"].notna(), "year"
+        ]
+        assert observed.max() == UPDATED_CRISIS_END_YEAR - horizon
+
+
+def test_coverage_reports_latest_usable_predictor_pairs(updated_panel):
+    # The one hand-written vintage year in the codebase: every exhibit label
+    # derives the year from the panel, and this pin is the tripwire that
+    # fails loudly when a new vintage moves it (then bump this one literal).
+    latest = latest_predictor_year(updated_panel)
+    assert latest == 2025
+    # The coverage table must report predictor pairs through that year and
+    # outcome end years shortened by each horizon, so readers see real data
+    # limits.
+    coverage = updated_coverage(updated_panel).set_index("series")
+    assert coverage.loc["business_predictor_pair", "end_year"] == latest
+    assert coverage.loc["household_predictor_pair", "end_year"] == latest
+    for horizon in range(1, 5):
+        assert (
+            coverage.loc[f"future_crisis_within_{horizon}y", "end_year"]
+            == UPDATED_CRISIS_END_YEAR - horizon
+        )
+
+
+def test_updated_table1_recalculates_expanded_statistics_but_freezes_gates(
+    updated_panel,
+):
+    # Updated Table 1 must recompute statistics through the latest predictor
+    # year while the four R-zone gates stay frozen, so post-2016 data never
+    # moves the cutoffs.
+    stats, quantiles = updated_table1(updated_panel)
+    stats = stats.set_index("variable")
+    for variable in [
+        "delta3_business_debt_gdp",
+        "delta3_log_real_equity",
+        "delta3_household_debt_gdp",
+        "delta3_log_real_house_price",
+    ]:
+        assert stats.loc[variable, "end_year"] == latest_predictor_year(updated_panel)
+    gates = quantiles.loc[quantiles["used_for_updated_rzone"]]
+    assert len(gates) == 4
+    expected = {
+        "delta3_business_debt_gdp": "business_debt_q80_cutoff",
+        "delta3_log_real_equity": "business_price_t667_cutoff",
+        "delta3_household_debt_gdp": "household_debt_q80_cutoff",
+        "delta3_log_real_house_price": "household_price_t667_cutoff",
+    }
+    for row in gates.itertuples(index=False):
+        frozen = updated_panel[expected[row.variable]].dropna().iloc[0]
+        assert row.frozen_historical_rzone_cutoff == pytest.approx(frozen)
+
+
+def test_historical_and_updated_figure3_windows_are_kept_separate(updated_panel):
+    # The historical Figure 3 series must still end in 2012 while the updated
+    # series runs to the latest predictor year, so the replication and the
+    # update never blur.
+    latest = latest_predictor_year(updated_panel)
+    historical = annual_rzone_fraction(updated_panel)
+    updated = annual_rzone_fraction(
+        updated_panel,
+        end_year=latest,
+        historical_sample=False,
+    )
+    assert (historical["year"].min(), historical["year"].max()) == (1950, 2012)
+    assert (updated["year"].min(), updated["year"].max()) == (1950, latest)
+    for sector in ["business", "household"]:
+        observed = updated[f"{sector}_n"].notna()
+        assert updated.loc[observed, f"{sector}_pct"].between(0, 100).all()
+
+
+def test_generated_updated_tables_encode_valid_forecast_endpoints():
+    # Updated Tables 3 and 4 must carry one horizon-consistent forecast end
+    # year per horizon and complete cell coverage, so no forecasts overreach.
+    required = [
+        OUTPUT_DIR / "table3_post_publication_crisis_probabilities.csv",
+        OUTPUT_DIR / "table4_post_publication_models.csv",
+    ]
+    if not all(path.exists() for path in required):
+        pytest.skip("updated exhibits not built -- run `doit analysis:post_publication`")
+    table3 = pd.read_csv(required[0])
+    table4 = pd.read_csv(required[1])
+    expected = {
+        horizon: UPDATED_CRISIS_END_YEAR - horizon for horizon in range(1, 5)
+    }
+    for frame in [table3, table4]:
+        assert frame.groupby("horizon")["forecast_end_year"].nunique().eq(1).all()
+        assert (
+            frame.groupby("horizon")["forecast_end_year"].first().to_dict() == expected
+        )
+    assert table3.shape[0] == 2 * 4 * 3 * 5
+    assert table4.groupby(["sector", "horizon"])["n"].nunique().eq(1).all()
+
+
+def test_original_data_overview_uses_complete_pairs_and_valid_percentages(
+    updated_panel,
+):
+    # The data overview must count complete debt+price pairs in each window
+    # and keep all percentages in [0, 100], so the report's coverage is honest.
+    summary = calculate_data_overview(updated_panel)
+    assert len(summary) == 4
+    assert set(summary["sector"]) == {"business", "household"}
+    assert set(zip(summary["start_year"], summary["end_year"], strict=True)) == {
+        (1950, 2012),
+        (2013, latest_predictor_year(updated_panel)),
+    }
+    assert summary["coverage_pct"].between(0, 100).all()
+    assert summary["rzone_share_pct"].between(0, 100).all()
+    for row in summary.itertuples(index=False):
+        price = (
+            "delta3_log_real_equity"
+            if row.sector == "business"
+            else "delta3_log_real_house_price"
+        )
+        expected = updated_panel.loc[
+            updated_panel["year"].between(row.start_year, row.end_year)
+            & updated_panel[f"delta3_{row.sector}_debt_gdp"].notna()
+            & updated_panel[price].notna()
+        ].shape[0]
+        assert row.country_years == expected
+
+
+def test_final_report_includes_all_main_exhibits_and_no_code_listings():
+    # The LaTeX report must input every generated exhibit and contain no code
+    # listings; the rubric requires auto-generated numbers and no snippets.
+    source = FINAL_REPORT_SOURCE.read_text(encoding="utf-8")
+    required_inputs = [
+        "data_overview_summary.tex",
+        "table1_summary_stats.tex",
+        "table3_replication.tex",
+        "table4_replication.tex",
+        "table1_post_publication.tex",
+        "table3_post_publication.tex",
+        "table4_post_publication.tex",
+        "post_publication_crisis_screen.tex",
+        "report_fragility_summary.tex",
+        "report_missed_crises.tex",
+        "report_dynamic_summary.tex",
+        "report_tracker_summary.tex",
+        "report_usa_case_study.tex",
+    ]
+    required_figures = [
+        "data_overview_figure.jpg",
+        "historical_business_rzone_timeline.png",
+        "historical_household_rzone_timeline.png",
+        "figure3_fraction_countries_rzone.jpg",
+        "post_publication_business_rzone_timeline.png",
+        "post_publication_household_rzone_timeline.png",
+        "figure3_fraction_countries_rzone_post_publication.jpg",
+    ]
+    for artifact in [*required_inputs, *required_figures]:
+        assert artifact in source
+    for forbidden in ["lstlisting", r"\begin{verbatim}", r"\begin{minted}"]:
+        assert forbidden not in source

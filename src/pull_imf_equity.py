@@ -52,6 +52,7 @@ import requests
 from settings import config
 
 DATA_DIR = config("DATA_DIR")
+IMF_EQUITY_FILENAME = "imf_equity.parquet"
 
 IMF_MFS_FMP_URL = (
     "https://api.imf.org/external/sdmx/2.1/data/IMF.STA,MFS_FMP/"
@@ -62,7 +63,12 @@ SDMX_CSV_ACCEPT_HEADER = {"Accept": "application/vnd.sdmx.data+csv"}
 
 
 def pull_imf_equity(url=IMF_MFS_FMP_URL):
-    """Download all annual period-average share price indices from the IMF."""
+    """Download all annual share price indices (period-average and end-of-period).
+
+    :param url: SDMX 2.1 data query; its key wildcards country and indicator and pins
+        the two index transformations (PA_IX+EOP_IX) and annual frequency.
+    :returns: long DataFrame with one row per country-indicator-transformation-year.
+    """
     response = requests.get(url, headers=SDMX_CSV_ACCEPT_HEADER, timeout=300)
     response.raise_for_status()
 
@@ -88,8 +94,12 @@ def pull_imf_equity(url=IMF_MFS_FMP_URL):
 
 
 def load_imf_equity(data_dir=DATA_DIR):
-    """Load the IMF share price long panel: country_iso3 | indicator | year | value."""
-    return pd.read_parquet(Path(data_dir) / "imf_equity.parquet")
+    """Load the IMF share price long panel: one row per country-indicator-year.
+
+    :param data_dir: directory holding the project's parquet files (defaults to the configured DATA_DIR).
+    :returns: long DataFrame with one row per country-indicator-transformation-year.
+    """
+    return pd.read_parquet(Path(data_dir) / IMF_EQUITY_FILENAME)
 
 
 if __name__ == "__main__":
@@ -97,7 +107,7 @@ if __name__ == "__main__":
     data_dir.mkdir(parents=True, exist_ok=True)
 
     equity_df = pull_imf_equity()
-    equity_df.to_parquet(data_dir / "imf_equity.parquet")
+    equity_df.to_parquet(data_dir / IMF_EQUITY_FILENAME)
 
     n_countries = equity_df["country_iso3"].nunique()
     year_min, year_max = equity_df["year"].min(), equity_df["year"].max()

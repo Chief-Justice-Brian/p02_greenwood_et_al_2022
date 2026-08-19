@@ -1,0 +1,644 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.68in]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage[table]{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{longtable}
+\usepackage{pdflscape}
+\usepackage{newtxtext,newtxmath}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\pagestyle{plain}
+
+\title{Predictable Financial Crises:\\A Public-Data Replication and Post-Publication Update}
+\author{Brian Nguyen and Clara Duan\\FINM 32900}
+\date{August 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This project reconstructs the country-year data and principal results in
+Greenwood, Hanson, Shleifer, and S{\o}rensen's \textit{Predictable Financial
+Crises} using public data. The paper's central object is the R-Zone: a year in
+which three-year debt growth is in the historical top quintile and real
+asset-price growth is in the historical top tercile. We reproduce the assigned
+historical tables and event-history figures, validate them against 586
+published benchmarks using documented tolerances, extend the predictors and
+R-Zone classifications through 2025, and investigate bank fragility, missed
+crises, dynamics, and the United States around the 2023 banking stress. The
+replication succeeds most clearly in recovering the sample frequencies,
+cross-cell crisis gradient, and qualitative regression pattern. Exact equality
+is limited chiefly by unavailable proprietary equity-price data, revised
+public-source vintages, and differences in finite-sample inference.
+\end{abstract}
+
+\tableofcontents
+\clearpage
+
+\section{Nature and scope of the replication}
+
+The original paper asks whether financial crises are predictable from the
+joint behavior of credit and asset prices. We reconstruct annual observations
+for the paper's 42 countries, as close as public coverage permits, beginning in
+1950. Business-sector R-Zones pair business debt-to-GDP growth with real equity
+price growth; household-sector R-Zones pair household debt-to-GDP growth with
+real house-price growth. The historical forecast-origin sample ends in 2012 so
+that crisis outcomes are observed over a common one- through four-year future
+window ending in 2016.
+
+The project has three layers. First, it recreates the historical variables,
+descriptive exhibits, and country-fixed-effects probability models. Second, it
+holds the historical thresholds fixed and extends the underlying predictors
+and main exhibits through the latest usable observations. Third, it studies
+whether aggregate bank-balance-sheet fragility and autoregressive memory add
+information beyond the original borrower-side R-Zone indicators.
+
+\section{Data sources and construction}
+
+The crisis chronology, bank-equity crashes, bank failures, panics, and the
+historical GDP series come from the Baron--Verner--Xiong replication data.
+Credit is assembled from the IMF Global Debt Database, BIS Total Credit
+Statistics, and the Jord\`a--Schularick--Taylor Macrohistory database. Real
+equity prices use the IMF's former share-price series, JST, and OECD share
+prices. Real house prices use BIS Residential Property Prices, OECD Analytical
+House Prices, and JST. CPI and nominal GDP needed for real transformations come
+from World Bank World Development Indicators with JST supplements.
+
+Each three-year change is calculated within a source before sources are
+spliced. This avoids constructing a growth rate across incompatible levels.
+Debt growth is measured as a three-year percentage-point change in debt to GDP;
+real asset-price growth is 100 times a three-year log difference. Missing
+values remain missing, and a future crisis outcome is defined only when the
+entire relevant future window is covered. The historical pooled Q80 debt and
+T66.7 price cutoffs are frozen for every later classification.
+
+For the post-2016 crisis update, the outcome series extends BVX's own
+definition forward, so ``crisis'' means one thing in every year of the panel:
+a bank equity index decline of 30\% or more together with narrative evidence
+of widespread bank failures or a banking panic. No published chronology
+applies these criteria past 2016, so the extension is constructed here from
+published datasets: the BVX replication data and the CRSP value-weighted bank
+portfolio from the Ken French Data Library, which tracks the paper's own
+United States bank equity series closely over their post-war overlap. A
+narrative screen of the sample for 2017--2025 yields three candidate
+episodes, and the pulled data decide each label mechanically
+(Table~\ref{tab:crisis-screen}). The 2023 United States episode is genuinely
+borderline: the broad value-weighted index stops short of the 30\% bar
+because the crash concentrated in regional banks while the largest
+institutions rallied, even though large-cap bank benchmarks crossed the bar
+and the failure and run evidence is unprecedented by assets. BVX's own
+chronology contains a precedent in the other direction---the United States
+in 1984 is counted as a crisis on narrative evidence with a smaller
+aggregate equity decline---so we let the mechanical rule decide and report
+the sensitivity openly.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Post-2016 candidate crisis episodes under the paper's own
+criteria.} Each row is a sample episode from the 2017--2025 narrative screen,
+with the verdict of BVX's criteria as applied by our pipeline. The takeaway
+is that no post-2016 episode qualifies as a systemic crisis onset, but the
+United States in 2023 is borderline: the broad value-weighted bank index
+falls short of the 30\% threshold that large-cap benchmarks crossed, while
+the failure and run evidence rivals any postwar episode. An index choice,
+not the data alone, decides the 2023 call.}
+\label{tab:crisis-screen}
+\small
+\input{../_output/post_publication_crisis_screen.tex}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Original summary statistics for the underlying predictor
+data.} The table compares complete sector-specific predictor pairs in the
+historical estimation years with later observations. The main lesson is that
+country coverage becomes much broader after 2012, while average debt growth
+and the fraction of joint upper-tail R-Zones fall. Updated estimates therefore
+reflect both more countries and a different predictor distribution.}
+\label{tab:overview}
+\small
+\input{../_output/data_overview_summary.tex}
+
+\medskip
+\begin{minipage}{0.97\linewidth}
+\footnotesize
+\textit{Notes:} Coverage is relative to a balanced panel of 42 countries. Debt
+and price entries report mean (standard deviation). Corr. is the Pearson
+correlation between the two predictors. R-Zone percentages use the frozen
+historical thresholds.
+\end{minipage}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.91\textwidth]{../_output/data_overview_figure.jpg}
+\caption{\textbf{Coverage and joint predictor distributions.} Panel A shows
+the changing number of countries with a complete sector pair. Panels B and C
+show later predictor observations and the frozen threshold lines. The figure
+motivates two cautions for interpretation: annual global statistics do not use
+a constant country count, and an R-Zone is a genuinely rare joint-tail event
+rather than a year in which only debt or only prices are elevated. Scatter axes
+are limited to the first and 99th percentiles for readability.}
+\label{fig:overview}
+\end{figure}
+
+\clearpage
+\section{Historical replication}
+
+\subsection{Summary statistics and event histories}
+
+The reconstructed sample closely matches the paper's core moments. Business
+R-Zones account for 6.46\% of complete historical business observations,
+compared with 6.0\% in the paper; household R-Zones account for 9.81\%, compared
+with 10.3\%. The three-year crisis frequency conditional on an R-Zone is
+36.6\% for business and 33.6\% for households in the public reconstruction,
+versus 45.3\% and 36.8\% in the paper. The remaining business gap is consistent
+with the equity-series substitution discussed below.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Replicated Table 1: historical summary statistics.} Every
+entry is recalculated from the reconstructed public-data panel using the
+paper's sample logic. The close crisis means and percentile thresholds support
+the overall reconstruction; the largest remaining difference is equity-price
+dispersion because the proprietary GFD and Bloomberg series are unavailable.}
+\label{tab:table1-historical}
+\small
+\input{../_output/table1_summary_stats.tex}
+\end{table}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.96\textwidth]{../_output/historical_business_rzone_timeline.png}
+\caption{\textbf{Replicated Figure 1: historical event history.} Coral circles
+mark BVX crisis onsets and teal crosses mark business R-Zones. Horizontal
+country lines show the span with both predictors. Together with Panel B on the
+following page, the figure shows that R-Zones often cluster before crises but
+are neither necessary nor sufficient.}
+\label{fig:figure1-historical}
+\end{figure}
+
+\begin{figure}[p]
+\ContinuedFloat
+\centering
+\includegraphics[width=0.96\textwidth]{../_output/historical_household_rzone_timeline.png}
+\caption[]{\textbf{Replicated Figure 1 continued: household event history.}
+The household panel reinforces the same takeaway: some joint booms do not end
+in crisis, and many crises arrive without a preceding R-Zone.}
+\end{figure}
+
+\clearpage
+\subsection{Crisis probabilities across predictor cells}
+
+The descriptive cell estimates preserve the paper's main gradient: crisis
+frequencies generally rise when both price growth and debt growth are high.
+Sparse cells and substituted equity data create numerical differences, but the
+upper-right R-Zone remains economically distinct from the median cell.
+
+\captionof{table}{\textbf{Replicated Table 3: crisis probabilities by debt and
+price-growth quantiles.} Panels A and C show where the observations lie;
+Panels B and D show one- through four-year crisis frequencies and differences
+from the median cell. Gray upper-right cells identify the R-Zone. The main
+lesson is a joint-tail pattern rather than a purely monotonic effect of either
+predictor by itself. Significance uses conventional Driscoll--Kraay p-values.}
+\label{tab:table3-historical}
+\input{../_output/table3_replication.tex}
+
+\clearpage
+\subsection{Country-fixed-effects prediction models}
+
+The regression exercise estimates linear probability models with country fixed
+effects and Driscoll--Kraay covariance estimates. Across horizons, high debt
+growth and the R-Zone interaction carry the economically important effects;
+price growth alone is less stable. Coefficients are not expected to match
+exactly because R-Zone assignments are sensitive to the unavailable
+proprietary equity histories.
+
+\begin{landscape}
+\captionof{table}{\textbf{Replicated Table 4: crisis prediction by sector.}
+Coefficients are percentage-point changes in the probability of a crisis
+within the stated horizon. The sum rows give the predicted effect when all
+included high-growth indicators equal one. The table supports the paper's
+qualitative conclusion that joint debt and asset-price booms are more
+informative than price appreciation alone.}
+\label{tab:table4-historical}
+\input{../_output/table4_replication.tex}
+\end{landscape}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.90\textwidth]{../_output/figure3_fraction_countries_rzone.jpg}
+\caption{\textbf{Replicated Figure 3: fraction of countries in an R-Zone,
+1950--2012.} The global share is the percentage of available countries in each
+sector's R-Zone. The figure shows that warning episodes are synchronized across
+countries in a few pronounced waves, especially around the late 1980s and
+mid-2000s, rather than being evenly distributed through time.}
+\label{fig:figure3-historical}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Numerical validation of the assigned historical exhibits.}
+The validation suite compares every transcribed paper benchmark with the
+recalculated value under a pre-documented absolute tolerance. All 586 checks
+pass. This means the reconstruction is acceptably close for the intended
+public-data replication; it does not mean every cell is numerically identical.}
+\label{tab:validation}
+\input{../_output/report_validation_summary.tex}
+\end{table}
+
+\section{Post-publication update}
+
+The update is kept separate from the historical replication. Predictors and
+R-Zone classifications extend through 2025. Because a horizon-$h$ forecast at
+year $t$ needs crisis coverage through $t+h$, the latest valid forecast origins
+are 2024, 2023, 2022, and 2021 at horizons one through four. This distinction
+prevents late observations with incomplete future outcomes from being treated
+as crisis-free.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Updated Table 1: summary statistics through the latest
+available year.} Predictor rows use complete sector pairs through 2025, while
+legacy descriptive series retain their documented stopping dates. Compared
+with the historical table, later observations reduce average debt growth and
+change several expanded-sample quantiles. The R-Zone assignments nevertheless
+continue to use the historical gates rather than these recalculated quantiles.}
+\label{tab:table1-updated}
+\small
+\input{../_output/table1_post_publication.tex}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Post-2016 R-Zone tracker by year.} Counts report the number of
+countries with a usable sector pair and the number classified in each R-Zone.
+The takeaway is that the warning indicator was uncommon in the recent panel
+and absent in both sectors in 2024 and 2025, despite broad predictor coverage.}
+\label{tab:tracker}
+\small
+\input{../_output/report_tracker_summary.tex}
+\end{table}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.96\textwidth]{../_output/post_publication_business_rzone_timeline.png}
+\caption{\textbf{Updated Figure 1: event history through 2025.} Historical BVX
+crises are joined to our extension of BVX's own criteria, and business
+R-Zones use unchanged historical thresholds. The extension adds many predictor
+observations but no confirmed post-2016 systemic onset inside the 42-country
+sample.}
+\label{fig:figure1-updated}
+\end{figure}
+
+\begin{figure}[p]
+\ContinuedFloat
+\centering
+\includegraphics[width=0.96\textwidth]{../_output/post_publication_household_rzone_timeline.png}
+\caption[]{\textbf{Updated Figure 1 continued: household event history through
+2025.} Taken together, the updated panels are most informative about how
+frequently the warning state has occurred rather than about newly realized
+crisis performance.}
+\end{figure}
+
+\clearpage
+\captionof{table}{\textbf{Updated Table 3: crisis probabilities using expanded
+predictor and outcome coverage.} The table fully recalculates distributions,
+frequencies, and differences from the median cell while retaining historical
+quantile assignments. The updated upper-right cells remain riskier, but the
+estimates partly dilute because the additional years contribute many
+non-R-Zone observations and no newly classified systemic crisis in sample.}
+\label{tab:table3-updated}
+\input{../_output/table3_post_publication.tex}
+
+\clearpage
+\begin{landscape}
+\captionof{table}{\textbf{Updated Table 4: re-estimated crisis-prediction
+models.} Every coefficient is re-estimated rather than carried forward from
+the historical table. Sample sizes decline with the horizon because longer
+future windows require earlier forecast origins. The R-Zone effects remain
+economically meaningful, although the update is not a strong out-of-sample
+crisis test because no new systemic onset occurs within the country universe.}
+\label{tab:table4-updated}
+\input{../_output/table4_post_publication.tex}
+\end{landscape}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.90\textwidth]{../_output/figure3_fraction_countries_rzone_post_publication.jpg}
+\caption{\textbf{Updated Figure 3: fraction of available countries in an
+R-Zone through 2025.} The historical waves remain visible, while recent global
+R-Zone shares are much lower. The important interpretation is descriptive:
+the synchronized joint boom condition that characterized earlier peaks has not
+been widespread in the most recent observations.}
+\label{fig:figure3-updated}
+\end{figure}
+
+\clearpage
+\section{Extensions and diagnostics}
+
+\subsection{Bank-balance-sheet fragility}
+
+The fragility extension adds high noncore funding, high loans-to-deposits, and
+thin bank capital (the flipped lev inequality) one at a time, plus their
+interaction with the sector R-Zone. All comparisons use the same complete-case sample as the corresponding
+GHSS model. At the three-year horizon, noncore funding and loans-to-deposits
+have positive standalone associations with crisis risk and improve within
+fit. Interaction estimates are unstable; in particular, the signs vary across
+measures and sectors, and the proposal's precommitted cutoff sweep shows why:
+the joint R-Zone-and-fragile cell holds only a handful of country-years at
+every candidate threshold, so no flag-based interaction estimate is well
+identified.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Three-year bank-fragility extension.} High fragility and
+interaction coefficients are percentage points; $R^2_0$ and $R^2_1$ refer to
+the same-sample GHSS and extended models. The table's main lesson is that
+noncore funding and loans-to-deposits add standalone information, while the
+interaction effect is too measure- and sector-sensitive to support a single
+amplification mechanism.}
+\label{tab:fragility}
+\small
+\input{../_output/report_fragility_summary.tex}
+
+\medskip
+\footnotesize
+\textit{Notes:} *, **, and *** denote conventional significance at the 10\%,
+5\%, and 1\% levels using Driscoll--Kraay p-values.
+\end{table}
+
+The proposal's continuous robustness check replaces each 0/1 flag with the
+standardized ratio level (sign-flipped for lev, so a larger value always means
+more fragile) and settles the question the flags cannot: with the full
+variation in use, the standalone funding-fragility terms are positive and
+significant while the R-Zone interactions remain indistinguishable from zero
+for both funding measures. Funding fragility is an additive second crisis
+channel, not an amplifier of credit booms, and adding it roughly doubles the
+baseline model's within fit at the three- and four-year horizons.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Three-year continuous fragility extension.} Coefficients are
+percentage points of crisis probability per one standard deviation of the
+ratio, standardized on the historical estimation sample. The table's main
+lesson is that the funding-fragility level adds strong standalone signal and
+roughly doubles within fit, while the R-Zone interaction stays a null once
+the full variation replaces the thin flag cells: fragility adds to boom risk
+rather than multiplying it.}
+\label{tab:fragility-continuous}
+\small
+\input{../_output/report_fragility_continuous.tex}
+
+\medskip
+\footnotesize
+\textit{Notes:} *, **, and *** denote conventional significance at the 10\%,
+5\%, and 1\% levels using Driscoll--Kraay p-values.
+\end{table}
+
+Two further precommitted checks pin down what kind of predictor fragility is.
+Racing the noncore level against its own three-year change shows the level
+retains its full effect while the change carries nothing, so the channel is a
+stock, the opposite time signature of the paper's boom variables, which are
+all three-year flows. Adding a quadratic term leaves an economically and
+statistically negligible coefficient at every horizon, so the dose-response
+is linear: there is no threshold at which fragility switches from safe to
+dangerous, which is why no flag version of this variable can achieve
+R-Zone-like precision and why the monitor presents fragility as a continuous
+gauge rather than a binary alarm.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Functional form of the noncore fragility channel.} Level and
+three-year-change coefficients come from their joint specification; the
+quadratic term comes from the curvature check. Both checks were precommitted.
+The takeaway is that fragility risk sits in the level, not the recent change,
+and rises linearly with no threshold.}
+\label{tab:fragility-form}
+\small
+\input{../_output/report_fragility_form_checks.tex}
+
+\medskip
+\footnotesize
+\textit{Notes:} Coefficients are percentage points per standard deviation
+(the quadratic per squared standard deviation). *, **, and *** denote
+significance at the 10\%, 5\%, and 1\% levels using Driscoll--Kraay p-values.
+\end{table}
+
+\subsection{Crises missed by the R-Zone}
+
+Of 54 historical crisis onsets in the diagnostic sample, 26 have no business
+or household R-Zone in the preceding three years. Fragility data are available
+for 16 of those missed crises. Seven have prior noncore funding at or above the
+80th fragility percentile, six have high loans-to-deposits, and two have thin
+bank capital.
+Fragility therefore identifies a meaningful subset of misses but does not
+explain all of them. Missing JST coverage is itself an important constraint.
+
+\input{../_output/report_missed_crises.tex}
+
+\subsection{Autoregressive comparison}
+
+The dynamic specification adds current and lagged crisis states and lagged
+predictors to the same-sample GHSS model. Within $R^2$ and in-sample AUC rise at
+every horizon, most visibly at the one- and two-year horizons; crisis memory
+sharpens the near view and adds little at the horizons the R-Zone is designed
+for. Because the AUC values are in-sample, the exercise establishes
+incremental fit rather than a definitive out-of-sample forecasting gain.
+
+The paper's footnote 10 asserts, without a supporting table, that a local
+projection with these dynamic terms gives ``qualitatively similar results.''
+Our proposal pinned that phrase down before estimation: signs must match,
+significance must survive at the same horizons, and the dynamic R-Zone
+coefficient must sit within one standard error of its static value. All three
+criteria hold in every sector-horizon cell, so the footnote's claim, which
+the literature has so far taken on faith, verifies on our panel.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{The footnote-10 verdict.} Static and dynamic R-Zone
+coefficients (percentage points) with the tightest precommitted criterion,
+whether the dynamic estimate lies within one static standard error. Every
+cell passes all three precommitted criteria, confirming the paper's unshown
+robustness claim.}
+\label{tab:fn10}
+\small
+\input{../_output/report_footnote10_verdict.tex}
+
+\medskip
+\footnotesize
+\textit{Notes:} *, **, and *** denote significance at the 10\%, 5\%, and 1\%
+levels using Driscoll--Kraay p-values.
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Static versus autoregressive crisis models.} The table
+compares the R-Zone coefficient, within fit, and in-sample AUC on identical
+samples. Adding memory consistently improves fit and classification, but the
+gains are moderate at longer horizons and should not be interpreted as
+out-of-sample evidence. Subscripts 0 and 1 denote the static and dynamic
+models.}
+\label{tab:dynamic}
+\scriptsize
+\input{../_output/report_dynamic_summary.tex}
+
+\medskip
+\footnotesize
+\textit{Notes:} R-Zone coefficients are percentage points. *, **, and ***
+denote significance at the 10\%, 5\%, and 1\% levels.
+\end{table}
+
+\subsection{Crisis risk after leaving the R-Zone}
+
+The R-Zone's price condition switches off when a boom stalls, which is often
+the prelude to the bust, so a country can leave the zone at the moment of
+greatest danger. We test this with mutually exclusive one-, two-, and
+three-years-since-exit indicators added to the same-sample baseline, with the
+expectation of elevated post-exit risk stated before estimation. On all
+origins the sectors split sharply: household exit-years carry elevated risk
+at every horizon on top of the current-zone effect, while the business zone
+shows nothing. That headline, however, does not survive its own robustness
+check. A crisis itself crushes prices and ejects a country from the zone, so
+roughly two-fifths of household exit-years sit within two years after a BVX
+crisis, and the estimate leans on the 2008--2011 wave, where BVX record
+second crisis onsets (Spain, Greece, Ireland, Denmark, Italy) that exit-years
+from the first leg mechanically ``predict.'' Restricting to origins with no
+crisis in the current or three prior years leaves the coefficients similar
+but mostly removes their significance, and removing the five 2008-wave
+countries' post-crisis origins eliminates the effect. We therefore report the
+post-exit elevation as suggestive and concentrated in crisis waves, not as an
+established warning property, and the honest design lesson for the monitor is
+narrower: exit-years are not evidence of safety, but we cannot show they
+carry standalone advance warning.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Crisis risk after leaving the R-Zone.} Coefficients are
+percentage points relative to country-years outside the zone with no recent
+exit; the final column re-estimates the pooled exit effect on origins with no
+BVX crisis in the current or three prior years. The takeaway is two-sided:
+household post-exit risk looks elevated on all origins, but much of it
+reflects overlap with ongoing crisis episodes, and the clean-origin estimates
+are similar in size yet mostly insignificant.}
+\label{tab:rzone-exit}
+\small
+\input{../_output/report_rzone_exit.tex}
+
+\medskip
+\footnotesize
+\textit{Notes:} ``In zone'' and ``Recent exit'' come from the pooled
+specification on all origins; the three exit-year columns come from the
+mutually exclusive bucket specification; ``No-crisis exit'' is the pooled
+exit coefficient on the no-recent-crisis sample. The estimation sample
+excludes each country's earliest years, where exit status is undeterminable,
+which raises the base crisis rate relative to Table~\ref{tab:table4-historical}'s
+sample; the ``In zone'' column is therefore not comparable across tables.
+*, **, and *** denote significance at the 10\%, 5\%, and 1\% levels using
+Driscoll--Kraay p-values.
+\end{table}
+
+\subsection{United States and the 2023 banking stress}
+
+The United States was not in either aggregate R-Zone from 2019 through 2023.
+This is an informative failure mode rather than a reason to retroactively
+redefine the model: the R-Zone is designed to detect borrower-side credit and
+asset-price booms, whereas the March 2023 episode prominently involved
+institution-specific duration, funding, uninsured-deposit, and run risk. The
+public aggregate banking ratios are also unavailable after 2020 in this panel,
+so the table cannot stand in for a bank-level SVB analysis.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{United States predictor case study, 2019--2023.} Three-year
+business and household debt growth and real asset-price growth never jointly
+cross their historical thresholds. The takeaway is that the original R-Zone
+did not signal the 2023 stress, illustrating the difference between an
+aggregate borrower boom and concentrated bank funding or duration risk.}
+\label{tab:usa-case}
+\small
+\input{../_output/report_usa_case_study.tex}
+\end{table}
+
+\section{Assessment: successes, challenges, and lessons}
+
+\subsection*{Where the replication succeeded}
+
+The project delivers an end-to-end public-data reconstruction with a unique
+country-year key, documented source priorities, reproducible transformations,
+and automated validation. It closely recovers the paper's R-Zone frequencies,
+preserves the joint debt--price crisis gradient, and produces regression
+effects with the same broad economic interpretation. All 586 transcribed
+historical benchmarks pass their stated tolerances, and the full automated test
+suite verifies the main growth, threshold, outcome-window, sample, and updated
+coverage rules. The post-publication work recalculates rather than merely
+relabels the tables and figures.
+
+\subsection*{Where the project faced challenges}
+
+The largest obstacle is data equivalence. The paper partly relies on Global
+Financial Data and Bloomberg equity histories, which are proprietary. IMF,
+JST, and OECD substitutions are defensible and reproduce thresholds closely,
+but different volatility and country coverage alter some individual R-Zone
+assignments. Public data vintages have also been revised since the paper, and
+long historical panels require careful source-by-source splicing. On inference,
+the project implements Driscoll--Kraay covariance estimates but not the paper's
+additional Kiefer--Vogelsang finite-sample correction.
+
+The modern extension has a second limitation: the updated crisis chronology
+contains no confirmed post-2016 onset within the 42-country sample. The added
+years therefore improve knowledge about the prevalence of warning states but
+provide little power for judging their realized post-publication crisis
+performance. Likewise, JST aggregate banking variables cover far fewer
+country-years and do not capture the institution-specific vulnerabilities that
+matter in cases such as Continental Illinois or Silicon Valley Bank.
+
+\subsection*{Overall conclusion}
+
+The public reconstruction supports the paper's central qualitative result:
+rapid debt growth is most concerning when accompanied by rapid real asset-price
+appreciation. The R-Zone is a useful macro-financial warning state, not a
+complete crisis model. Bank fragility and crisis memory add information on
+complementary horizons, memory sharpening the near view and the
+funding-fragility level, an additive and threshold-free channel, carrying the
+three-to-four-year signal, while
+missed crises and the 2023 United States episode show why aggregate
+country-level boom indicators should be supplemented with banking-system and
+institution-level measures. The updated data do not overturn the historical
+relationship, but the absence of recent in-sample systemic onsets means that a
+strong modern validation claim would be premature.
+
+\appendix
+\clearpage
+\section{Detailed Table 1 divergence report}
+
+\captionof{table}{\textbf{Historical Table 1 replication versus published
+values.} This appendix makes the numerical differences transparent. The
+largest substantive discrepancy is tied to the free equity-price replacement;
+other moments and quantiles are generally close enough to support the main
+replication exercise.}
+\label{tab:table1-comparison}
+\scriptsize
+\input{../_output/table1_comparison.tex}
+
+\section{References and source documentation}
+
+Greenwood, Robin, Samuel G. Hanson, Andrei Shleifer, and Jakob Ahm
+S{\o}rensen. 2022. ``Predictable Financial Crises.'' \textit{Journal of
+Finance} 77(2).
+
+Baron, Matthew, Emil Verner, and Wei Xiong. 2021. ``Banking Crises Without
+Panics.'' \textit{Quarterly Journal of Economics} 136(1).
+
+Additional public series are drawn from the IMF Global Debt Database and
+former share-price statistics, the BIS Total Credit and Residential Property
+Price databases, the JST Macrohistory database, OECD share-price and house-price
+indicators, and World Bank World Development Indicators.
+
+\end{document}

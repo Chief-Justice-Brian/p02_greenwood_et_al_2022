@@ -48,6 +48,7 @@ import requests
 from settings import config
 
 DATA_DIR = config("DATA_DIR")
+OECD_HOUSE_PRICES_FILENAME = "oecd_house_prices.parquet"
 
 OECD_HOUSE_PRICES_URL = (
     "https://sdmx.oecd.org/public/rest/data/"
@@ -57,7 +58,12 @@ OECD_HOUSE_PRICES_URL = (
 
 
 def pull_oecd_house_prices(url=OECD_HOUSE_PRICES_URL):
-    """Download the full OECD analytical house price dataflow."""
+    """Download the full OECD analytical house price dataflow.
+
+    :param url: SDMX REST query with key "all" -- every series in the dataflow from
+        1950 on, returned as labelled CSV.
+    :returns: long DataFrame with one row per country-measure-period.
+    """
     response = requests.get(url, timeout=300)
     response.raise_for_status()
 
@@ -79,8 +85,12 @@ def pull_oecd_house_prices(url=OECD_HOUSE_PRICES_URL):
 
 
 def load_oecd_house_prices(data_dir=DATA_DIR):
-    """Load the OECD house price panel: country_iso3 | freq | measure | period | value."""
-    return pd.read_parquet(Path(data_dir) / "oecd_house_prices.parquet")
+    """Load the OECD house price panel: country_iso3 | freq | measure | period | value.
+
+    :param data_dir: directory holding the project's parquet files (defaults to the configured DATA_DIR).
+    :returns: long DataFrame with one row per country-measure-period.
+    """
+    return pd.read_parquet(Path(data_dir) / OECD_HOUSE_PRICES_FILENAME)
 
 
 if __name__ == "__main__":
@@ -88,7 +98,7 @@ if __name__ == "__main__":
     data_dir.mkdir(parents=True, exist_ok=True)
 
     house_df = pull_oecd_house_prices()
-    house_df.to_parquet(data_dir / "oecd_house_prices.parquet")
+    house_df.to_parquet(data_dir / OECD_HOUSE_PRICES_FILENAME)
 
     n_countries = house_df["country_iso3"].nunique()
     print(f"Saved oecd_house_prices.parquet: {house_df.shape}, {n_countries} countries")

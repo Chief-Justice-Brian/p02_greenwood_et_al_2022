@@ -24,6 +24,6 @@ project_overview/methodology
 - [ ] Define project goals and success criteria
 - [ ] Set up data pipeline and validate outputs
 - [ ] Explore and document datasets
-- [ ] Build initial charts and notebooks
+- [x] Build initial charts and notebooks
 - [ ] Write up findings
 - [x] Initialize project from template

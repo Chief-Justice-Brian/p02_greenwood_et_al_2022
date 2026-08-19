@@ -1,0 +1,32 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.65in]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{newtxtext,newtxmath}
+\usepackage{microtype}
+\pagestyle{plain}
+\begin{document}
+
+\noindent\textbf{Figure 3: Fraction of Countries in R-Zone}
+
+\smallskip
+\noindent\footnotesize
+The figure depicts the fraction of available countries in the R-Zone at a
+given time:
+\[
+ \mathrm{Global\ R\mbox{-}Zone}_{t}
+ = \frac{1}{N_t}\sum_{i\in S_t}\mathrm{R\mbox{-}Zone}_{it}.
+\]
+$N_t$ is the number of countries with the relevant debt and price-growth
+measures in year $t$, and $S_t$ is the set of countries in the sample
+at time $t$. Business combines business-debt growth with equity-price 
+growth; household combines household-debt growth with house-price growth. 
+R-Zone is the intersection of the highest debt-growth quintile and 
+highest price-growth tercile. The figure uses the reconstructed 
+historical panel for 1950--2012.
+
+\begin{center}
+\includegraphics[width=0.92\textwidth]{../_output/figure3_fraction_countries_rzone.jpg}
+\end{center}
+
+\end{document}

@@ -47,6 +47,7 @@ import requests
 from settings import config
 
 DATA_DIR = config("DATA_DIR")
+JST_MACROHISTORY_FILENAME = "jst_macrohistory.parquet"
 
 # Canonical R6 .dta link from https://www.macrohistory.net/database/
 # (the site 302-redirects to a jimcontent CDN URL; requests follows it)
@@ -57,7 +58,12 @@ REQUEST_HEADERS = {"User-Agent": "Mozilla/5.0 (research replication script)"}
 
 
 def pull_jst_macrohistory(url=JST_DTA_URL):
-    """Download the JST R6 Stata file and return it as a DataFrame."""
+    """Download the JST R6 Stata file and return it as a DataFrame.
+
+    :param url: download link for the R6 .dta file on macrohistory.net (defaults
+        to the configured JST_DTA_URL).
+    :returns: the JST R6 panel as a DataFrame, one row per country-year.
+    """
     response = requests.get(url, headers=REQUEST_HEADERS, timeout=300)
     response.raise_for_status()
 
@@ -66,8 +72,12 @@ def pull_jst_macrohistory(url=JST_DTA_URL):
 
 
 def load_jst_macrohistory(data_dir=DATA_DIR):
-    """Load the JST panel: one row per (country, year)."""
-    return pd.read_parquet(Path(data_dir) / "jst_macrohistory.parquet")
+    """Load the JST panel: one row per (country, year).
+
+    :param data_dir: directory holding the project's parquet files (defaults to the configured DATA_DIR).
+    :returns: DataFrame with one row per (country, year).
+    """
+    return pd.read_parquet(Path(data_dir) / JST_MACROHISTORY_FILENAME)
 
 
 if __name__ == "__main__":
@@ -75,7 +85,7 @@ if __name__ == "__main__":
     data_dir.mkdir(parents=True, exist_ok=True)
 
     jst_df = pull_jst_macrohistory()
-    jst_df.to_parquet(data_dir / "jst_macrohistory.parquet")
+    jst_df.to_parquet(data_dir / JST_MACROHISTORY_FILENAME)
 
     n_countries = jst_df["country"].nunique()
     year_min, year_max = int(jst_df["year"].min()), int(jst_df["year"].max())
