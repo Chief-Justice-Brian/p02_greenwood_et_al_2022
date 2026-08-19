@@ -2,8 +2,8 @@
 
 Historical observations retain the paper's BVX definition through 2016; the
 extension applies the same definition forward, so the series means one thing
-in every year. Per the project's data policy every input is a published
-dataset: the BVX replication kit and the CRSP bank portfolio.
+in every year. The inputs are the BVX replication kit and the CRSP bank
+portfolio (``pull_us_bank_equity.py``).
 
 ``crisis_bvx_extended``
     BVX through 2016, then our own extension of BVX's stated criteria
@@ -22,15 +22,10 @@ dataset: the BVX replication kit and the CRSP bank portfolio.
         2023-03-28); the systemic risk exception was invoked and discount
         window borrowing hit a record $152.9bn. The equity criterion is not
         asserted -- it is computed below from the pulled CRSP value-weighted
-        bank portfolio (see ``pull_us_bank_equity.py``: it tracks BVX's own
-        US series over their post-war overlap), and the label is set only if
-        the data clears the 30 percent bar. The 2023 decline was concentrated
-        in regional banks while the largest institutions rallied, so the
-        broad value-weighted index stops short of the bar that large-cap
-        benchmarks such as KBW crossed; BVX's own chronology carries a
-        precedent in the other direction (US 1984, counted as a crisis on
-        narrative evidence with a much smaller aggregate equity decline), so
-        the episode is genuinely borderline and the mechanical rule decides.
+        bank portfolio (``pull_us_bank_equity.py``), and the label is set
+        only if the data clears the 30 percent bar. The sensitivity of this
+        call to the index choice is discussed in
+        ``docs_src/project_overview/methodology.md``.
     Switzerland, 2023
         Credit Suisse suffered an institution-specific run and assisted
         merger, but failures were not widespread (one institution) and the
@@ -69,9 +64,13 @@ US_CRISIS_CANDIDATE_YEAR = 2023
 
 
 def max_drawdown_in_year(bank_equity: pd.DataFrame, year: int) -> float:
-    """Deepest decline from the trailing one-year peak during a calendar year.
+    """Compute the deepest decline from the trailing one-year peak in a year.
 
-    Returns the drawdown as a positive fraction (0.35 = a 35% decline).
+    :param bank_equity: daily series with date and index_level columns.
+    :param year: calendar year whose maximum drawdown is returned.
+    :returns: the drawdown as a positive fraction (0.35 = a 35% decline).
+    :raises ValueError: if the bank equity series has no observations in the
+        requested year.
     """
     levels = bank_equity.sort_values("date").reset_index(drop=True)
     trailing_peak = (
@@ -85,7 +84,14 @@ def max_drawdown_in_year(bank_equity: pd.DataFrame, year: int) -> float:
 
 
 def _add_forward_windows(result: pd.DataFrame, column: str) -> None:
-    """Attach {column}_next_{h}y outcomes requiring full future windows."""
+    """Attach {column}_next_{h}y outcomes requiring full future windows.
+
+    Modifies result in place; horizons run one through four years.
+
+    :param result: country-year frame ordered by year within each country.
+    :param column: name of the 0/1 onset column the forward windows are built
+        from.
+    """
     grouped = result.groupby("country_iso3", sort=False)[column]
     for horizon in range(1, 5):
         future = pd.concat(
@@ -104,6 +110,10 @@ def add_bvx_extended_crisis_series(
     The narrative screen (module docstring) leaves the United States 2023 as
     the only candidate; its label is decided here by the pulled bank equity
     data, not asserted.
+
+    :param panel: country-year analysis panel carrying the crisis_bvx column.
+    :param bank_equity: daily US bank equity series with date and index_level
+        columns.
     """
     result = panel.sort_values(["country_iso3", "year"]).copy()
     result["crisis_bvx_extended"] = np.nan

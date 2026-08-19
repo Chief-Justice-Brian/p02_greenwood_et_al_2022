@@ -36,7 +36,22 @@ def _difference_from_median(
     debt_quintile: int,
     bandwidth: int,
 ) -> tuple[float, float, float]:
-    """Return target-minus-median difference, t-statistic, and p-value."""
+    """Return target-minus-median difference (in pp), t-statistic, and p-value.
+
+    Regresses the outcome on a target-cell dummy over the pooled target and
+    median (tercile 2, quintile 3) observations with Driscoll--Kraay standard
+    errors at the given bandwidth.
+
+    :param sample: one sector's in-sample slice of the analysis panel.
+    :param outcome: name of the 0/1 crisis-within-h-years outcome column.
+    :param price_col: name of the sector's price-tercile column.
+    :param debt_col: name of the sector's debt-quintile column.
+    :param price_tercile: price tercile (1-3) of the target cell.
+    :param debt_quintile: debt quintile (1-5) of the target cell.
+    :param bandwidth: Driscoll--Kraay lag length for the standard errors.
+    :returns: target-minus-median difference (in pp), t-statistic, and p-value;
+        the median cell itself returns (0, nan, nan).
+    """
     if price_tercile == 2 and debt_quintile == 3:
         return 0.0, np.nan, np.nan
 
@@ -66,7 +81,13 @@ def _difference_from_median(
 
 
 def calculate_table3(panel: pd.DataFrame) -> pd.DataFrame:
-    """Calculate every cell needed by Panels A--D."""
+    """Calculate every cell needed by Panels A--D.
+
+    :param panel: full country-year analysis panel from load_analysis_panel.
+    :returns: one row per sector, horizon (1-4), price tercile, and debt
+        quintile, holding that cell's share, crisis frequency, and difference
+        from the median cell.
+    """
     rows: list[dict[str, float | int | str]] = []
     for sector, (price_col, debt_col) in SECTOR_COLUMNS.items():
         sample = panel.loc[panel[f"in_{sector}_sample"]].copy()
@@ -106,6 +127,10 @@ def calculate_table3(panel: pd.DataFrame) -> pd.DataFrame:
 
 
 def _stars(p_value: float) -> str:
+    """Map a p-value to conventional significance stars.
+
+    :param p_value: two-sided p-value; NaN yields no stars.
+    """
     if pd.isna(p_value):
         return ""
     if p_value < 0.01:
@@ -118,6 +143,13 @@ def _stars(p_value: float) -> str:
 
 
 def _number(value: float, p_value: float = np.nan, highlight: bool = False) -> str:
+    """Format a cell value with significance stars and optional gray highlight.
+
+    :param value: cell value in percent, rendered to one decimal place.
+    :param p_value: p-value used for the stars; defaults to NaN, meaning no
+        stars.
+    :param highlight: if True, wrap the cell in gray shading and bold text.
+    """
     rendered = f"{value:.1f}"
     stars = _stars(p_value)
     if stars:
@@ -128,6 +160,12 @@ def _number(value: float, p_value: float = np.nan, highlight: bool = False) -> s
 
 
 def _distribution_panel(data: pd.DataFrame, letter: str, sector: str) -> str:
+    """Render one sector's distribution-of-observations panel (A or C).
+
+    :param data: calculate_table3 output covering both sectors.
+    :param letter: panel letter shown in the heading.
+    :param sector: "business" or "household".
+    """
     label = "Business Debt and Equity Prices" if sector == "business" else (
         "Household Debt and House Prices"
     )
@@ -160,6 +198,12 @@ def _distribution_panel(data: pd.DataFrame, letter: str, sector: str) -> str:
 
 
 def _probability_horizon(data: pd.DataFrame, sector: str, horizon: int) -> str:
+    """Render one horizon's crisis-frequency and difference-from-median block.
+
+    :param data: calculate_table3 output covering both sectors.
+    :param sector: "business" or "household".
+    :param horizon: crisis horizon in years (1-4).
+    """
     subset = data[(data["sector"] == sector) & (data["horizon"] == horizon)]
     year_label = "year" if horizon == 1 else "years"
     lines = [
@@ -203,6 +247,12 @@ def _probability_horizon(data: pd.DataFrame, sector: str, horizon: int) -> str:
 
 
 def _probability_panel(data: pd.DataFrame, letter: str, sector: str) -> str:
+    """Render one sector's crisis-probability panel (B or D) across horizons 1-4.
+
+    :param data: calculate_table3 output covering both sectors.
+    :param letter: panel letter shown in the heading.
+    :param sector: "business" or "household".
+    """
     label = "Business Debt and Equity Prices" if sector == "business" else (
         "Household Debt and House Prices"
     )
@@ -215,7 +265,10 @@ def _probability_panel(data: pd.DataFrame, letter: str, sector: str) -> str:
 
 
 def build_latex(data: pd.DataFrame) -> str:
-    """Render the four publication-style panels as a LaTeX fragment."""
+    """Render the four publication-style panels as a LaTeX fragment.
+
+    :param data: calculate_table3 output covering both sectors.
+    """
     return "\n\n".join(
         [
             r"\begingroup\small\setlength{\tabcolsep}{3.5pt}\renewcommand{\arraystretch}{0.92}",
@@ -230,6 +283,7 @@ def build_latex(data: pd.DataFrame) -> str:
 
 
 def main() -> None:
+    """Calculate every Table 3 cell and write the CSV and LaTeX outputs."""
     panel = load_analysis_panel()
     results = calculate_table3(panel)
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)

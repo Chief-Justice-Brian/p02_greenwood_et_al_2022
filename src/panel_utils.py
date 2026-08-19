@@ -14,22 +14,14 @@ import pandas as pd
 def delta3_within_source(source_df, value_column, is_log=False):
     """Compute 3-year changes of ``value_column`` within one source.
 
-    Parameters
-    ----------
-    source_df : DataFrame with columns country_iso3 | year | <value_column>
-    value_column : name of the level column
-    is_log : if True, the input is a LOG level, so the 3-year change is a
-        log change and is multiplied by 100 (percent); if False, the input is
-        already in the final unit (e.g. percent of GDP) and the 3-year change
-        is a simple difference (percentage points).
-
-    Returns
-    -------
-    DataFrame with columns country_iso3 | year | delta3
-
-    The 3-year change at year t is defined only when that same source has
-    observations at both t and exactly t-3. Intermediate annual observations
-    are not required because the endpoint change remains well-defined.
+    :param source_df: DataFrame with columns country_iso3 | year |
+        <value_column>.
+    :param value_column: name of the level column to difference.
+    :param is_log: if True the input is a LOG level, so the change is a log
+        change scaled by 100 (percent); if False it is a simple difference in
+        the input's own unit (e.g. percentage points of GDP).
+    :returns: country_iso3 | year | delta3. The change at year t exists only
+        when this same source has observations at both t and exactly t-3.
     """
     frames = []
     for country, country_df in source_df.groupby("country_iso3"):
@@ -56,15 +48,11 @@ def delta3_within_source(source_df, value_column, is_log=False):
 def splice_by_priority(sources_in_priority_order):
     """Splice per-source 3-year changes: first non-missing source wins.
 
-    Parameters
-    ----------
-    sources_in_priority_order : list of (source_label, DataFrame) where each
-        DataFrame has columns country_iso3 | year | delta3. Earlier entries
-        have higher priority.
-
-    Returns
-    -------
-    DataFrame with columns country_iso3 | year | delta3 | source
+    :param sources_in_priority_order: list of (source_label, DataFrame)
+        pairs, each frame with columns country_iso3 | year | delta3; earlier
+        entries have higher priority.
+    :returns: country_iso3 | year | delta3 | source, where source labels the
+        provider that supplied each country-year.
     """
     spliced = None
     for source_label, source_df in sources_in_priority_order:
@@ -86,9 +74,12 @@ def splice_by_priority(sources_in_priority_order):
 def annual_average_from_quarterly(quarterly_df, value_column="value"):
     """Collapse a quarterly panel to annual averages.
 
-    Input: DataFrame with columns country_iso3 | period ("1990-Q1") | <value>.
-    Output: DataFrame with columns country_iso3 | year | <value> where the
-    value is the mean over available quarters in that year.
+    :param quarterly_df: DataFrame with columns country_iso3 | period
+        ("1990-Q1") | <value_column>.
+    :param value_column: name of the value column to average; defaults to
+        "value".
+    :returns: DataFrame with columns country_iso3 | year | <value> where the
+        value is the mean over available quarters in that year.
     """
     working = quarterly_df.copy()
     working["year"] = working["period"].str.slice(0, 4).astype(int)
@@ -99,7 +90,13 @@ def annual_average_from_quarterly(quarterly_df, value_column="value"):
 
 
 def log_positive(series):
-    """np.log that maps non-positive values to NaN instead of raising."""
+    """np.log that maps non-positive values to NaN instead of raising.
+
+    :param series: numeric level series; entries at or below zero come back
+        NaN.
+    :returns: elementwise np.log, with NaN wherever the input is not
+        positive.
+    """
     values = series.astype(float).copy()
     values[values <= 0] = np.nan
     return np.log(values)

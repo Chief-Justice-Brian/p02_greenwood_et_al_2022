@@ -346,14 +346,15 @@ been widespread in the most recent observations.}
 \subsection{Bank-balance-sheet fragility}
 
 The fragility extension adds high noncore funding, high loans-to-deposits, and
-high leverage measures one at a time, plus their interaction with the sector
-R-Zone. All comparisons use the same complete-case sample as the corresponding
+thin bank capital (the flipped lev inequality) one at a time, plus their
+interaction with the sector R-Zone. All comparisons use the same complete-case sample as the corresponding
 GHSS model. At the three-year horizon, noncore funding and loans-to-deposits
 have positive standalone associations with crisis risk and improve within
 fit. Interaction estimates are unstable; in particular, the signs vary across
-measures and sectors. The extension therefore offers evidence that bank-side
-conditions matter independently, but not a robust claim that they universally
-amplify R-Zone booms.
+measures and sectors, and the proposal's precommitted cutoff sweep shows why:
+the joint R-Zone-and-fragile cell holds only a handful of country-years at
+every candidate threshold, so no flag-based interaction estimate is well
+identified.
 
 \begin{table}[H]
 \centering
@@ -373,12 +374,70 @@ amplification mechanism.}
 5\%, and 1\% levels using Driscoll--Kraay p-values.
 \end{table}
 
+The proposal's continuous robustness check replaces each 0/1 flag with the
+standardized ratio level (sign-flipped for lev, so a larger value always means
+more fragile) and settles the question the flags cannot: with the full
+variation in use, the standalone funding-fragility terms are positive and
+significant while the R-Zone interactions remain indistinguishable from zero
+for both funding measures. Funding fragility is an additive second crisis
+channel, not an amplifier of credit booms, and adding it roughly doubles the
+baseline model's within fit at the three- and four-year horizons.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Three-year continuous fragility extension.} Coefficients are
+percentage points of crisis probability per one standard deviation of the
+ratio, standardized on the historical estimation sample. The table's main
+lesson is that the funding-fragility level adds strong standalone signal and
+roughly doubles within fit, while the R-Zone interaction stays a null once
+the full variation replaces the thin flag cells: fragility adds to boom risk
+rather than multiplying it.}
+\label{tab:fragility-continuous}
+\small
+\input{../_output/report_fragility_continuous.tex}
+
+\medskip
+\footnotesize
+\textit{Notes:} *, **, and *** denote conventional significance at the 10\%,
+5\%, and 1\% levels using Driscoll--Kraay p-values.
+\end{table}
+
+Two further precommitted checks pin down what kind of predictor fragility is.
+Racing the noncore level against its own three-year change shows the level
+retains its full effect while the change carries nothing, so the channel is a
+stock, the opposite time signature of the paper's boom variables, which are
+all three-year flows. Adding a quadratic term leaves an economically and
+statistically negligible coefficient at every horizon, so the dose-response
+is linear: there is no threshold at which fragility switches from safe to
+dangerous, which is why no flag version of this variable can achieve
+R-Zone-like precision and why the monitor presents fragility as a continuous
+gauge rather than a binary alarm.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Functional form of the noncore fragility channel.} Level and
+three-year-change coefficients come from their joint specification; the
+quadratic term comes from the curvature check. Both checks were precommitted.
+The takeaway is that fragility risk sits in the level, not the recent change,
+and rises linearly with no threshold.}
+\label{tab:fragility-form}
+\small
+\input{../_output/report_fragility_form_checks.tex}
+
+\medskip
+\footnotesize
+\textit{Notes:} Coefficients are percentage points per standard deviation
+(the quadratic per squared standard deviation). *, **, and *** denote
+significance at the 10\%, 5\%, and 1\% levels using Driscoll--Kraay p-values.
+\end{table}
+
 \subsection{Crises missed by the R-Zone}
 
 Of 54 historical crisis onsets in the diagnostic sample, 26 have no business
 or household R-Zone in the preceding three years. Fragility data are available
 for 16 of those missed crises. Seven have prior noncore funding at or above the
-80th percentile, six have high loans-to-deposits, and five have high leverage.
+80th fragility percentile, six have high loans-to-deposits, and two have thin
+bank capital.
 Fragility therefore identifies a meaningful subset of misses but does not
 explain all of them. Missing JST coverage is itself an important constraint.
 
@@ -388,10 +447,35 @@ explain all of them. Missing JST coverage is itself an important constraint.
 
 The dynamic specification adds current and lagged crisis states and lagged
 predictors to the same-sample GHSS model. Within $R^2$ and in-sample AUC rise at
-every horizon, most visibly at the one- and two-year horizons. The R-Zone
-coefficient generally remains positive but changes in magnitude and precision.
-Because the AUC values are in-sample, the exercise establishes incremental fit
-rather than a definitive out-of-sample forecasting gain.
+every horizon, most visibly at the one- and two-year horizons; crisis memory
+sharpens the near view and adds little at the horizons the R-Zone is designed
+for. Because the AUC values are in-sample, the exercise establishes
+incremental fit rather than a definitive out-of-sample forecasting gain.
+
+The paper's footnote 10 asserts, without a supporting table, that a local
+projection with these dynamic terms gives ``qualitatively similar results.''
+Our proposal pinned that phrase down before estimation: signs must match,
+significance must survive at the same horizons, and the dynamic R-Zone
+coefficient must sit within one standard error of its static value. All three
+criteria hold in every sector-horizon cell, so the footnote's claim, which
+the literature has so far taken on faith, verifies on our panel.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{The footnote-10 verdict.} Static and dynamic R-Zone
+coefficients (percentage points) with the tightest precommitted criterion,
+whether the dynamic estimate lies within one static standard error. Every
+cell passes all three precommitted criteria, confirming the paper's unshown
+robustness claim.}
+\label{tab:fn10}
+\small
+\input{../_output/report_footnote10_verdict.tex}
+
+\medskip
+\footnotesize
+\textit{Notes:} *, **, and *** denote significance at the 10\%, 5\%, and 1\%
+levels using Driscoll--Kraay p-values.
+\end{table}
 
 \begin{table}[H]
 \centering
@@ -409,6 +493,55 @@ models.}
 \footnotesize
 \textit{Notes:} R-Zone coefficients are percentage points. *, **, and ***
 denote significance at the 10\%, 5\%, and 1\% levels.
+\end{table}
+
+\subsection{Crisis risk after leaving the R-Zone}
+
+The R-Zone's price condition switches off when a boom stalls, which is often
+the prelude to the bust, so a country can leave the zone at the moment of
+greatest danger. We test this with mutually exclusive one-, two-, and
+three-years-since-exit indicators added to the same-sample baseline, with the
+expectation of elevated post-exit risk stated before estimation. On all
+origins the sectors split sharply: household exit-years carry elevated risk
+at every horizon on top of the current-zone effect, while the business zone
+shows nothing. That headline, however, does not survive its own robustness
+check. A crisis itself crushes prices and ejects a country from the zone, so
+roughly two-fifths of household exit-years sit within two years after a BVX
+crisis, and the estimate leans on the 2008--2011 wave, where BVX record
+second crisis onsets (Spain, Greece, Ireland, Denmark, Italy) that exit-years
+from the first leg mechanically ``predict.'' Restricting to origins with no
+crisis in the current or three prior years leaves the coefficients similar
+but mostly removes their significance, and removing the five 2008-wave
+countries' post-crisis origins eliminates the effect. We therefore report the
+post-exit elevation as suggestive and concentrated in crisis waves, not as an
+established warning property, and the honest design lesson for the monitor is
+narrower: exit-years are not evidence of safety, but we cannot show they
+carry standalone advance warning.
+
+\begin{table}[H]
+\centering
+\caption{\textbf{Crisis risk after leaving the R-Zone.} Coefficients are
+percentage points relative to country-years outside the zone with no recent
+exit; the final column re-estimates the pooled exit effect on origins with no
+BVX crisis in the current or three prior years. The takeaway is two-sided:
+household post-exit risk looks elevated on all origins, but much of it
+reflects overlap with ongoing crisis episodes, and the clean-origin estimates
+are similar in size yet mostly insignificant.}
+\label{tab:rzone-exit}
+\small
+\input{../_output/report_rzone_exit.tex}
+
+\medskip
+\footnotesize
+\textit{Notes:} ``In zone'' and ``Recent exit'' come from the pooled
+specification on all origins; the three exit-year columns come from the
+mutually exclusive bucket specification; ``No-crisis exit'' is the pooled
+exit coefficient on the no-recent-crisis sample. The estimation sample
+excludes each country's earliest years, where exit status is undeterminable,
+which raises the base crisis rate relative to Table~\ref{tab:table4-historical}'s
+sample; the ``In zone'' column is therefore not comparable across tables.
+*, **, and *** denote significance at the 10\%, 5\%, and 1\% levels using
+Driscoll--Kraay p-values.
 \end{table}
 
 \subsection{United States and the 2023 banking stress}
@@ -471,7 +604,10 @@ matter in cases such as Continental Illinois or Silicon Valley Bank.
 The public reconstruction supports the paper's central qualitative result:
 rapid debt growth is most concerning when accompanied by rapid real asset-price
 appreciation. The R-Zone is a useful macro-financial warning state, not a
-complete crisis model. Bank fragility and crisis memory add information, while
+complete crisis model. Bank fragility and crisis memory add information on
+complementary horizons, memory sharpening the near view and the
+funding-fragility level, an additive and threshold-free channel, carrying the
+three-to-four-year signal, while
 missed crises and the 2023 United States episode show why aggregate
 country-level boom indicators should be supplemented with banking-system and
 institution-level measures. The updated data do not overturn the historical

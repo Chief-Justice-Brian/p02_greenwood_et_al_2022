@@ -134,6 +134,225 @@ def fragility_summary() -> str:
     return "\n".join(lines) + "\n"
 
 
+def fragility_continuous_summary() -> str:
+    """Build the LaTeX tabular of horizon-3 continuous fragility estimates.
+
+    Shows the standardized-level and R-Zone x level coefficients plus the
+    baseline and extended within-R2 for each sector and measure, mirroring
+    the flag-based table so the two are read side by side.
+    """
+    coefficients = pd.read_csv(OUTPUT_DIR / "fragility_continuous_coefficients.csv")
+    models = pd.read_csv(OUTPUT_DIR / "fragility_continuous_models.csv")
+    lines = [
+        r"\begin{tabular}{llrrrrr}",
+        r"\toprule",
+        r"Sector & Measure & Fragility level & R-Zone $\times$ level & $R^2_0$ & $R^2_1$ & $N$ \\",
+        r"\midrule",
+    ]
+    for sector in ["business", "household"]:
+        for measure in ["noncore", "ltd", "lev"]:
+            subset = coefficients.loc[
+                coefficients["sector"].eq(sector)
+                & coefficients["fragility_measure"].eq(measure)
+                & coefficients["horizon"].eq(3)
+                & coefficients["specification"].eq("continuous_extension")
+            ]
+            level = subset.loc[
+                subset["variable"].eq(f"{measure}_fragility_z")
+            ].iloc[0]
+            interaction = subset.loc[
+                subset["variable"].eq(f"rzone_{sector}_x_{measure}_fragility_z")
+            ].iloc[0]
+            model_subset = models.loc[
+                models["sector"].eq(sector)
+                & models["fragility_measure"].eq(measure)
+                & models["horizon"].eq(3)
+            ]
+            base = model_subset.loc[
+                model_subset["specification"].eq("ghss_same_sample")
+            ].iloc[0]
+            extended = model_subset.loc[
+                model_subset["specification"].eq("continuous_extension")
+            ].iloc[0]
+            lines.append(
+                " & ".join(
+                    [
+                        sector.title(),
+                        {
+                            "noncore": "Noncore",
+                            "ltd": "Loans/deposits",
+                            "lev": "Leverage",
+                        }[measure],
+                        _estimate(level["coefficient_pp"], level["p_value"]),
+                        _estimate(
+                            interaction["coefficient_pp"], interaction["p_value"]
+                        ),
+                        f"{base['within_r2_pct']:.1f}",
+                        f"{extended['within_r2_pct']:.1f}",
+                        f"{int(extended['n']):,}",
+                    ]
+                )
+                + r" \\"
+            )
+    lines.extend([r"\bottomrule", r"\end{tabular}"])
+    return "\n".join(lines) + "\n"
+
+
+def fragility_form_checks_summary() -> str:
+    """Build the LaTeX tabular of the two noncore functional-form checks.
+
+    Shows the level and 3-year-change coefficients from their joint race and
+    the quadratic term from the curvature check, per sector and horizon.
+    """
+    coefficients = pd.read_csv(OUTPUT_DIR / "fragility_form_checks_coefficients.csv")
+    lines = [
+        r"\begin{tabular}{lrrrr}",
+        r"\toprule",
+        r"Sector & Horizon & Level & 3-year change & Quadratic \\",
+        r"\midrule",
+    ]
+    for sector in ["business", "household"]:
+        for horizon in [1, 2, 3, 4]:
+            race = coefficients.loc[
+                coefficients["sector"].eq(sector)
+                & coefficients["horizon"].eq(horizon)
+                & coefficients["specification"].eq("level_and_change")
+            ]
+            level = race.loc[race["variable"].eq("noncore_fragility_z")].iloc[0]
+            change = race.loc[
+                race["variable"].eq("delta3_noncore_fragility_z")
+            ].iloc[0]
+            quadratic = coefficients.loc[
+                coefficients["sector"].eq(sector)
+                & coefficients["horizon"].eq(horizon)
+                & coefficients["specification"].eq("level_quadratic")
+                & coefficients["variable"].eq("noncore_fragility_z_sq")
+            ].iloc[0]
+            lines.append(
+                " & ".join(
+                    [
+                        sector.title() if horizon == 1 else "",
+                        str(horizon),
+                        _estimate(level["coefficient_pp"], level["p_value"]),
+                        _estimate(change["coefficient_pp"], change["p_value"]),
+                        _estimate(quadratic["coefficient_pp"], quadratic["p_value"]),
+                    ]
+                )
+                + r" \\"
+            )
+    lines.extend([r"\bottomrule", r"\end{tabular}"])
+    return "\n".join(lines) + "\n"
+
+
+def rzone_exit_summary() -> str:
+    """Build the LaTeX tabular of post-exit R-Zone risk estimates.
+
+    Shows the current-zone and pooled recent-exit coefficients plus the
+    mutually exclusive years-since-exit buckets on all origins, per sector
+    and horizon, beside the pooled recent-exit coefficient re-estimated on
+    origins with no BVX crisis in the current or three prior years.
+    """
+    coefficients = pd.read_csv(OUTPUT_DIR / "rzone_exit_coefficients.csv")
+    lines = [
+        r"\begin{tabular}{lrrrrrrr}",
+        r"\toprule",
+        r"Sector & Horizon & In zone & Recent exit & Exit $-1$y & Exit $-2$y & Exit $-3$y & No-crisis exit \\",
+        r"\midrule",
+    ]
+    for sector in ["business", "household"]:
+        zone = f"rzone_{sector}"
+        for horizon in [1, 2, 3, 4]:
+            subset = coefficients.loc[
+                coefficients["sector"].eq(sector)
+                & coefficients["horizon"].eq(horizon)
+            ]
+            pooled = subset.loc[
+                subset["sample"].eq("all_origins")
+                & subset["specification"].eq("recent_exit")
+            ]
+            in_zone = pooled.loc[pooled["variable"].eq(zone)].iloc[0]
+            recent = pooled.loc[
+                pooled["variable"].eq(f"{zone}_recent_exit")
+            ].iloc[0]
+            by_year = subset.loc[
+                subset["sample"].eq("all_origins")
+                & subset["specification"].eq("exit_by_year")
+            ]
+            buckets = [
+                by_year.loc[by_year["variable"].eq(f"{zone}_exited_{k}y")].iloc[0]
+                for k in [1, 2, 3]
+            ]
+            clean = subset.loc[
+                subset["sample"].eq("no_recent_crisis")
+                & subset["specification"].eq("recent_exit")
+                & subset["variable"].eq(f"{zone}_recent_exit")
+            ].iloc[0]
+            lines.append(
+                " & ".join(
+                    [
+                        sector.title() if horizon == 1 else "",
+                        str(horizon),
+                        _estimate(in_zone["coefficient_pp"], in_zone["p_value"]),
+                        _estimate(recent["coefficient_pp"], recent["p_value"]),
+                        *[
+                            _estimate(bucket["coefficient_pp"], bucket["p_value"])
+                            for bucket in buckets
+                        ],
+                        _estimate(clean["coefficient_pp"], clean["p_value"]),
+                    ]
+                )
+                + r" \\"
+            )
+    lines.extend([r"\bottomrule", r"\end{tabular}"])
+    return "\n".join(lines) + "\n"
+
+
+def footnote10_verdict() -> str:
+    """Build the LaTeX tabular of the precommitted footnote-10 verdict.
+
+    Compares the static and dynamic R-Zone coefficients per sector and
+    horizon and marks whether the dynamic estimate sits within one static
+    standard error, the tightest of the three precommitted criteria.
+    """
+    coefficients = pd.read_csv(OUTPUT_DIR / "dynamic_regression_coefficients.csv")
+    rzone_rows = coefficients.loc[coefficients["variable"].str.startswith("rzone")]
+    lines = [
+        r"\begin{tabular}{lrrrc}",
+        r"\toprule",
+        r"Sector & Horizon & Static $\gamma^{(h)}$ & Dynamic $\gamma^{(h)}$ & Within 1 s.e. \\",
+        r"\midrule",
+    ]
+    for sector in ["business", "household"]:
+        for horizon in [1, 2, 3, 4]:
+            subset = rzone_rows.loc[
+                rzone_rows["sector"].eq(sector) & rzone_rows["horizon"].eq(horizon)
+            ]
+            static = subset.loc[
+                subset["specification"].eq("ghss_same_sample")
+            ].iloc[0]
+            dynamic = subset.loc[
+                subset["specification"].eq("autoregressive")
+            ].iloc[0]
+            within_one_se = (
+                abs(dynamic["coefficient_pp"] - static["coefficient_pp"])
+                <= static["std_error_pp"]
+            )
+            lines.append(
+                " & ".join(
+                    [
+                        sector.title() if horizon == 1 else "",
+                        str(horizon),
+                        _estimate(static["coefficient_pp"], static["p_value"]),
+                        _estimate(dynamic["coefficient_pp"], dynamic["p_value"]),
+                        "Yes" if within_one_se else "No",
+                    ]
+                )
+                + r" \\"
+            )
+    lines.extend([r"\bottomrule", r"\end{tabular}"])
+    return "\n".join(lines) + "\n"
+
+
 def dynamic_summary() -> str:
     """Build the LaTeX tabular racing the static and autoregressive models.
 
@@ -227,19 +446,19 @@ def missed_crises() -> str:
         country = row.country.replace("&", r"\&")
         lines.append(
             f"{country} & {row.crisis_year} & "
-            f"{percentile(row.max_prior_noncore_percentile)} & "
-            f"{percentile(row.max_prior_ltd_percentile)} & "
-            f"{percentile(row.max_prior_lev_percentile)} \\\\"
+            f"{percentile(row.prior_noncore_fragility_pct)} & "
+            f"{percentile(row.prior_ltd_fragility_pct)} & "
+            f"{percentile(row.prior_lev_fragility_pct)} \\\\"
         )
     lines.extend([r"\bottomrule", r"\end{longtable}"])
     return "\n".join(lines) + "\n"
 
 
 def tracker_summary() -> str:
-    """Build the LaTeX tabular of annual R-Zone counts for 2017-2025."""
+    """Build the LaTeX tabular of post-2016 annual R-Zone counts."""
     tracker = pd.read_csv(OUTPUT_DIR / "post_2016_rzone_tracker.csv")
     rows = []
-    for year in range(2017, 2026):
+    for year in range(2017, int(tracker["year"].max()) + 1):
         year_data = tracker.loc[tracker["year"].eq(year)]
         rows.append(
             {
@@ -293,6 +512,10 @@ def main() -> None:
     fragments = {
         "report_validation_summary.tex": validation_summary(),
         "report_fragility_summary.tex": fragility_summary(),
+        "report_fragility_continuous.tex": fragility_continuous_summary(),
+        "report_fragility_form_checks.tex": fragility_form_checks_summary(),
+        "report_rzone_exit.tex": rzone_exit_summary(),
+        "report_footnote10_verdict.tex": footnote10_verdict(),
         "report_dynamic_summary.tex": dynamic_summary(),
         "report_missed_crises.tex": missed_crises(),
         "report_tracker_summary.tex": tracker_summary(),

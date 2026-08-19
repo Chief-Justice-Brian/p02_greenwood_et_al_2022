@@ -31,8 +31,7 @@ References
 - DataMapper API documentation:
   https://www.imf.org/external/datamapper/api/help
 - Update frequency: annual vintage, typically refreshed once a year; the max
-  year in the API response reveals the current vintage (2024 as of this
-  writing).
+  year in the API response reveals the current vintage.
 - Citation: Mbaye, Moreno Badia and Chae, "Global Debt Database:
   Methodology and Sources," IMF Working Paper 18/111, 2018.
 """
@@ -60,6 +59,10 @@ def pull_gdd_indicator(indicator_code):
     """Pull one GDD indicator from the DataMapper API into a DataFrame.
 
     The API returns nested JSON: {"values": {indicator: {iso3: {year: value}}}}.
+
+    :param indicator_code: GDD indicator id appended to the API path, one of the
+        GDD_INDICATORS keys (e.g. ``HH_LS``).
+    :returns: long DataFrame with one row per country-year for the indicator.
     """
     url = f"{DATAMAPPER_API_BASE}/{indicator_code}"
     response = requests.get(url, timeout=120)
@@ -85,7 +88,12 @@ def pull_gdd_indicator(indicator_code):
 
 
 def pull_imf_gdd(indicator_codes=tuple(GDD_INDICATORS)):
-    """Pull all GDD indicators and stack them into one long DataFrame."""
+    """Pull all GDD indicators and stack them into one long DataFrame.
+
+    :param indicator_codes: iterable of GDD indicator ids to pull (defaults to all
+        the GDD_INDICATORS keys).
+    :returns: one long DataFrame with all indicators stacked.
+    """
     indicator_frames = []
     for indicator_code in indicator_codes:
         indicator_df = pull_gdd_indicator(indicator_code)
@@ -96,7 +104,11 @@ def pull_imf_gdd(indicator_codes=tuple(GDD_INDICATORS)):
 
 
 def load_imf_gdd(data_dir=DATA_DIR):
-    """Load the GDD long panel: country_iso3 | year | indicator | value."""
+    """Load the GDD long panel: country_iso3 | year | indicator | value.
+
+    :param data_dir: directory holding the project's parquet files (defaults to the configured DATA_DIR).
+    :returns: long DataFrame with one row per country-indicator-year.
+    """
     return pd.read_parquet(Path(data_dir) / IMF_GDD_FILENAME)
 
 

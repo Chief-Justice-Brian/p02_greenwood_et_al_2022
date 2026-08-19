@@ -58,7 +58,12 @@ OECD_HOUSE_PRICES_URL = (
 
 
 def pull_oecd_house_prices(url=OECD_HOUSE_PRICES_URL):
-    """Download the full OECD analytical house price dataflow."""
+    """Download the full OECD analytical house price dataflow.
+
+    :param url: SDMX REST query with key "all" -- every series in the dataflow from
+        1950 on, returned as labelled CSV.
+    :returns: long DataFrame with one row per country-measure-period.
+    """
     response = requests.get(url, timeout=300)
     response.raise_for_status()
 
@@ -80,7 +85,11 @@ def pull_oecd_house_prices(url=OECD_HOUSE_PRICES_URL):
 
 
 def load_oecd_house_prices(data_dir=DATA_DIR):
-    """Load the OECD house price panel: country_iso3 | freq | measure | period | value."""
+    """Load the OECD house price panel: country_iso3 | freq | measure | period | value.
+
+    :param data_dir: directory holding the project's parquet files (defaults to the configured DATA_DIR).
+    :returns: long DataFrame with one row per country-measure-period.
+    """
     return pd.read_parquet(Path(data_dir) / OECD_HOUSE_PRICES_FILENAME)
 
 

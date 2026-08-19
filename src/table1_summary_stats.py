@@ -47,7 +47,11 @@ HOUSEHOLD_ROWS = {
 
 
 def _row_sample(sample, column):
-    """Use the same complete-pair sample rule as the corresponding paper row."""
+    """Use the same complete-pair sample rule as the corresponding paper row.
+
+    :param sample: analysis-panel rows already restricted to the paper sample.
+    :param column: Table 1 variable name deciding which sector filter applies.
+    """
     if column in BUSINESS_ROWS:
         return sample[sample["in_business_sample"]]
     if column in HOUSEHOLD_ROWS:
@@ -56,6 +60,12 @@ def _row_sample(sample, column):
 
 
 def calculate_table1(panel):
+    """Compare replicated Table 1 counts, means, and SDs to the published rows.
+
+    :param panel: full country-year analysis panel from load_analysis_panel.
+    :returns: one row per Table 1 variable with replicated and paper values
+        plus their differences; crisis-indicator rows are scaled to percent.
+    """
     sample = panel[panel["in_paper_sample"]].copy()
     records = []
     for column in bench.TABLE1_PUBLISHED_ROWS:
@@ -81,7 +91,10 @@ def calculate_table1(panel):
 
 
 def calculate_quantile_comparison(panel):
-    """Recompute every quantile displayed in the bottom of the paper's table."""
+    """Recompute every quantile displayed in the bottom of the paper's table.
+
+    :param panel: full country-year analysis panel from load_analysis_panel.
+    """
     sample = panel[panel["in_paper_sample"]]
     specifications = []
 
@@ -154,11 +167,21 @@ def calculate_quantile_comparison(panel):
 
 
 def calculate_cutoff_comparison(panel):
-    """Compatibility view containing only the four R-zone assignment gates."""
+    """Compatibility view containing only the four R-zone assignment gates.
+
+    :param panel: full country-year analysis panel from load_analysis_panel.
+    """
     return calculate_quantile_comparison(panel).query("is_rzone_gate").copy()
 
 
 def _latex_fragment(frame, columns, headers, float_format="%.2f"):
+    """Render the selected frame columns as a booktabs LaTeX table string.
+
+    :param frame: DataFrame holding the rows to render.
+    :param columns: frame columns to keep, in display order.
+    :param headers: replacement column headers, aligned with columns.
+    :param float_format: printf-style format applied to float cells.
+    """
     display = frame[columns].copy()
     display.columns = headers
     return display.to_latex(
@@ -171,16 +194,28 @@ def _latex_fragment(frame, columns, headers, float_format="%.2f"):
 
 
 def _format_number(value):
+    """Format a value to two decimals, rendering NaN as an empty string.
+
+    :param value: numeric scalar to render; may be NaN or None for a blank cell.
+    """
     if pd.isna(value):
         return ""
     return f"{value:.2f}"
 
 
 def _summary_lookup(summary):
+    """Index the summary frame by variable name as a dict of row dicts.
+
+    :param summary: calculate_table1 output, one row per Table 1 variable.
+    """
     return summary.set_index("variable").to_dict(orient="index")
 
 
 def _quantile_lookup(quantiles):
+    """Map (variable, quantile) pairs to their replicated cutoff values.
+
+    :param quantiles: calculate_quantile_comparison output, one row per cutoff.
+    """
     return {
         (row.variable, row.quantile): row.replicated
         for row in quantiles.itertuples(index=False)
@@ -188,6 +223,14 @@ def _quantile_lookup(quantiles):
 
 
 def _data_row(summary_rows, quantile_rows, variable, quantiles=()):
+    """Build one LaTeX body row: label, N, mean, SD, then optional quantile cells.
+
+    :param summary_rows: variable -> summary record, from _summary_lookup.
+    :param quantile_rows: (variable, quantile) -> cutoff, from _quantile_lookup.
+    :param variable: panel column name of the Table 1 row being rendered.
+    :param quantiles: quantile levels to append; None entries render as empty
+        cells.
+    """
     row = summary_rows[variable]
     values = [
         ROW_LABELS[variable],
@@ -204,7 +247,11 @@ def _data_row(summary_rows, quantile_rows, variable, quantiles=()):
 
 
 def build_paper_style_table(summary, quantiles):
-    """Render the replication using the grouped layout of GHSS Table 1."""
+    """Render the replication using the grouped layout of GHSS Table 1.
+
+    :param summary: output of calculate_table1.
+    :param quantiles: output of calculate_quantile_comparison.
+    """
     summary_rows = _summary_lookup(summary)
     quantile_rows = _quantile_lookup(quantiles)
     lines = [

@@ -58,7 +58,12 @@ REQUEST_HEADERS = {"User-Agent": "Mozilla/5.0 (research replication script)"}
 
 
 def pull_jst_macrohistory(url=JST_DTA_URL):
-    """Download the JST R6 Stata file and return it as a DataFrame."""
+    """Download the JST R6 Stata file and return it as a DataFrame.
+
+    :param url: download link for the R6 .dta file on macrohistory.net (defaults
+        to the configured JST_DTA_URL).
+    :returns: the JST R6 panel as a DataFrame, one row per country-year.
+    """
     response = requests.get(url, headers=REQUEST_HEADERS, timeout=300)
     response.raise_for_status()
 
@@ -67,7 +72,11 @@ def pull_jst_macrohistory(url=JST_DTA_URL):
 
 
 def load_jst_macrohistory(data_dir=DATA_DIR):
-    """Load the JST panel: one row per (country, year)."""
+    """Load the JST panel: one row per (country, year).
+
+    :param data_dir: directory holding the project's parquet files (defaults to the configured DATA_DIR).
+    :returns: DataFrame with one row per (country, year).
+    """
     return pd.read_parquet(Path(data_dir) / JST_MACROHISTORY_FILENAME)
 
 

@@ -23,6 +23,15 @@ def _comparison(
     published: float,
     tolerance: float,
 ) -> dict[str, float | str | bool]:
+    """Build one benchmark-comparison record with a within_tolerance flag.
+
+    :param exhibit_name: exhibit the check belongs to (e.g. "Table 1").
+    :param statistic: name of the statistic being compared.
+    :param key: identifier for the specific cell or series being checked.
+    :param replicated: value produced by our pipeline.
+    :param published: value printed in the paper.
+    :param tolerance: maximum absolute difference that still counts as a match.
+    """
     difference = float(replicated) - float(published)
     return {
         "exhibit": exhibit_name,
@@ -40,6 +49,11 @@ def _comparison(
 def validate_table1(
     stats: pd.DataFrame, cutoffs: pd.DataFrame | None = None
 ) -> list[dict]:
+    """Compare Table 1 summary rows, and optionally quantile cutoffs, to the paper.
+
+    :param stats: calculate_table1 output (table1_stats.csv).
+    :param cutoffs: calculate_quantile_comparison output; skipped when None.
+    """
     rows: list[dict] = []
     indexed = stats.set_index("variable")
     for variable, (
@@ -101,6 +115,10 @@ def validate_table1(
 
 
 def validate_table3(results: pd.DataFrame) -> list[dict]:
+    """Compare every Table 3 cell to the published panels, plus per-statistic RMSEs.
+
+    :param results: calculate_table3 output (table3_crisis_probabilities.csv).
+    """
     rows: list[dict] = []
     indexed = results.set_index(["sector", "horizon", "price_tercile", "debt_quintile"])
     for sector in ["business", "household"]:
@@ -170,6 +188,12 @@ def validate_table3(results: pd.DataFrame) -> list[dict]:
 
 
 def _coefficient_specs(variable: str) -> list[str]:
+    """Return the two specifications whose published columns report this variable.
+
+    :param variable: predictor column name (high-debt, high-price, or rzone
+        indicator).
+    :returns: the two matching specification names.
+    """
     if variable.startswith("rzone_"):
         return ["full", "rzone_only"]
     if "debt_growth" in variable:
@@ -178,6 +202,14 @@ def _coefficient_specs(variable: str) -> list[str]:
 
 
 def validate_table4(coefficients: pd.DataFrame, models: pd.DataFrame) -> list[dict]:
+    """Compare Table 4 coefficients, t-stats, and model statistics to the paper.
+
+    Also appends per-statistic RMSE checks across all cells.
+
+    :param coefficients: the coefficient-level frame from
+        run_baseline_regressions.
+    :param models: the model-level frame from run_baseline_regressions.
+    """
     rows: list[dict] = []
     coef_index = coefficients.set_index(
         ["sector", "horizon", "specification", "variable"]
@@ -289,6 +321,11 @@ def validate_table4(coefficients: pd.DataFrame, models: pd.DataFrame) -> list[di
 
 
 def _crises_preceded_by_rzone(sample: pd.DataFrame, sector: str) -> int:
+    """Count BVX crisis years within three years after an R-Zone country-year.
+
+    :param sample: one sector's in-sample slice of the analysis panel.
+    :param sector: "business" or "household".
+    """
     rzone_origins = sample.loc[
         sample[f"rzone_{sector}"].eq(1) & sample["crisis_next_3y"].eq(1),
         ["country_iso3", "year"],
@@ -306,6 +343,10 @@ def _crises_preceded_by_rzone(sample: pd.DataFrame, sector: str) -> int:
 
 
 def validate_figure1(panel: pd.DataFrame) -> list[dict]:
+    """Compare Figure 1 sector aggregates and key crisis-marker years to the paper.
+
+    :param panel: full country-year analysis panel from load_analysis_panel.
+    """
     rows: list[dict] = []
     for sector, published in exhibit.FIGURE1_AGGREGATES.items():
         sample = panel.loc[panel[f"in_{sector}_sample"]]
@@ -372,6 +413,10 @@ def validate_figure1(panel: pd.DataFrame) -> list[dict]:
 
 
 def validate_figure3(annual: pd.DataFrame) -> list[dict]:
+    """Compare Figure 3 peaks, era maxima, and year range to published benchmarks.
+
+    :param annual: annual_rzone_fraction output (figure3_global_rzone.csv).
+    """
     rows: list[dict] = []
     business_peak = annual.loc[annual["business_pct"].idxmax()]
     household_peak = annual.loc[annual["household_pct"].idxmax()]
@@ -425,6 +470,7 @@ def validate_figure3(annual: pd.DataFrame) -> list[dict]:
 
 
 def build_validation_report() -> pd.DataFrame:
+    """Assemble every exhibit's benchmark comparisons from the saved outputs."""
     rows: list[dict] = []
     rows.extend(
         validate_table1(
@@ -448,6 +494,7 @@ def build_validation_report() -> pd.DataFrame:
 
 
 def main() -> None:
+    """Write the validation CSV and raise RuntimeError on out-of-tolerance checks."""
     report = build_validation_report()
     path = OUTPUT_DIR / "replication_validation.csv"
     report.to_csv(path, index=False)

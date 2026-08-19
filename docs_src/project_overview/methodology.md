@@ -69,9 +69,12 @@ one through four. The implementation reports conventional Driscoll–Kraay
 p-values; it does not yet implement the paper's additional Kiefer–Vogelsang
 finite-sample p-value correction.
 
-Fragility extensions use JST `noncore`, `ltd`, and `lev` separately, with Q80
-high-fragility indicators. Each extended model is compared with the GHSS model
-on the exact same complete-case sample. The dynamic comparison adds current
+Fragility extensions use JST `noncore`, `ltd`, and `lev` separately. Noncore
+and loans-to-deposits flag values above their in-sample Q80; `lev` is a capital
+ratio, so its flag marks thin capital below the Q20. The noncore cutoff is also
+swept across candidate quantiles with Q80 frozen ex ante as the baseline. Each
+extended model is compared with the GHSS model on the exact same complete-case
+sample. The dynamic comparison adds current
 and lagged crisis outcomes plus lagged GHSS predictors. Reported AUC values are
 in-sample diagnostics, not claims of out-of-sample performance.
 
@@ -84,12 +87,34 @@ later observations. Updated Table 1 nevertheless reports expanded-sample
 quantiles descriptively and stores the frozen assignment threshold beside each
 relevant gate in `table1_post_publication_quantiles.csv`.
 
-The updated systemic-crisis onset variable combines BVX through 2016 with the
-Laeven--Valencia (2026) IMF chronology from 2017 through 2025. The confirmed
-post-2016 onsets in that source are Ghana (2017), Republic of Congo (2017), and
-Lebanon (2019), none of which is in the 42-country GHSS sample. Events marked
-borderline by the IMF are excluded. Thus zeros in 2017--2025 are documented
-non-onsets for this sample, not missing observations recoded as zeros.
+The post-publication onset variable `crisis_bvx_extended` combines BVX
+through 2016 with our extension of BVX's stated criteria (a bank equity
+index decline of 30% or more plus narrative evidence of widespread bank
+failures or a banking panic) for 2017--2025, so the outcome is judged by one
+rule in every year of the panel. A narrative screen of the sample yields
+three candidate episodes: the United States 2023 (equity criterion computed
+from pulled data), Switzerland 2023 (a single institution; fails the
+widespread-failures arm), and Russia 2022 (excluded under BVX's own war
+convention). Zeros elsewhere in 2017--2025 reflect the absence of any
+narrative candidate, not missing observations recoded as zeros.
+
+### Bank equity index selection
+
+The equity criterion uses the CRSP value-weighted Banks portfolio from the
+Ken French Data Library. Validated against the paper's own US bank equity
+series (`Rtot_real` in the BVX replication kit), its post-war annual real
+returns correlate at roughly 0.87 with crisis-year gaps of about three
+percentage points, so it functions as a continuation of the paper's series
+rather than a substitute. The large-cap KBW benchmark was considered and
+rejected: it is tilted toward exactly the regional banks that crashed in
+2023 and diverges from BVX's broad value-weighted construction. The choice
+is decisive for the 2023 call: the broad value-weighted index's 2023
+trailing-peak drawdown stops short of the 30% bar that large-cap benchmarks
+crossed, while BVX's own chronology contains a precedent in the other
+direction (the US in 1984 is counted as a crisis on narrative evidence with
+a smaller aggregate equity decline). The pipeline applies the mechanical
+rule to the paper-faithful index and the report presents 2023 as a
+documented borderline call.
 
 The end of a predictor series is not necessarily a valid forecast origin. A
 horizon-$h$ outcome at year $t$ requires crisis coverage in every year from
@@ -111,7 +136,11 @@ compare image pixels.
 
 Tolerances are tighter for summary statistics and model fit, and wider for
 sparse probability cells and interaction coefficients that are especially
-sensitive to the unavailable GFD/Bloomberg equity series. The full audit is
+sensitive to the unavailable GFD/Bloomberg equity series: Table 3's cells
+are small, so reassigning only a few country-years can move a cell
+probability materially, and Table 4's coefficient tolerances sit just above
+the largest documented reconstruction gap while remaining far below the
+roughly 30--40 point headline R-Zone effects. The full audit is
 written to `_output/replication_validation.csv`; any value outside its stated
 tolerance fails `doit analysis:validation` and the exhibit-level pytest suite.
 

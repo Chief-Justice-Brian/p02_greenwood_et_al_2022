@@ -5,7 +5,11 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from build_analysis_panel import analysis_panel_path, load_analysis_panel
+from build_analysis_panel import (
+    analysis_panel_path,
+    latest_predictor_year,
+    load_analysis_panel,
+)
 from data_overview import calculate_data_overview
 from figure3_global_rzone import annual_rzone_fraction
 from post_publication_crisis_chronology import (
@@ -15,11 +19,7 @@ from post_publication_crisis_chronology import (
     add_bvx_extended_crisis_series,
     max_drawdown_in_year,
 )
-from post_publication_results import (
-    LATEST_PREDICTOR_YEAR,
-    updated_coverage,
-    updated_table1,
-)
+from post_publication_results import updated_coverage, updated_table1
 from pull_us_bank_equity import US_BANK_EQUITY_FILENAME, load_us_bank_equity
 from settings import config
 
@@ -45,6 +45,8 @@ def updated_panel():
 
 
 def test_bvx_extended_preserves_bvx_and_lets_the_data_decide_us_2023(updated_panel):
+    # Through 2016 the extended chronology must reproduce BVX exactly; the
+    # update may only append, never rewrite published history.
     historical = updated_panel["year"].le(2016)
     pd.testing.assert_series_equal(
         updated_panel.loc[historical, "crisis_bvx_extended"],
@@ -74,6 +76,8 @@ def test_extension_window_is_fully_labelled(updated_panel):
 
 
 def test_updated_future_outcomes_have_horizon_specific_endpoints(updated_panel):
+    # Each horizon's forward label must stop exactly h years before the
+    # chronology ends, so no origin is scored against unobserved outcomes.
     for horizon in range(1, 5):
         observed = updated_panel.loc[
             updated_panel[f"crisis_bvx_extended_next_{horizon}y"].notna(), "year"
@@ -82,9 +86,17 @@ def test_updated_future_outcomes_have_horizon_specific_endpoints(updated_panel):
 
 
 def test_coverage_reports_latest_usable_predictor_pairs(updated_panel):
+    # The one hand-written vintage year in the codebase: every exhibit label
+    # derives the year from the panel, and this pin is the tripwire that
+    # fails loudly when a new vintage moves it (then bump this one literal).
+    latest = latest_predictor_year(updated_panel)
+    assert latest == 2025
+    # The coverage table must report predictor pairs through that year and
+    # outcome end years shortened by each horizon, so readers see real data
+    # limits.
     coverage = updated_coverage(updated_panel).set_index("series")
-    assert coverage.loc["business_predictor_pair", "end_year"] == 2025
-    assert coverage.loc["household_predictor_pair", "end_year"] == 2025
+    assert coverage.loc["business_predictor_pair", "end_year"] == latest
+    assert coverage.loc["household_predictor_pair", "end_year"] == latest
     for horizon in range(1, 5):
         assert (
             coverage.loc[f"future_crisis_within_{horizon}y", "end_year"]
@@ -95,12 +107,18 @@ def test_coverage_reports_latest_usable_predictor_pairs(updated_panel):
 def test_updated_table1_recalculates_expanded_statistics_but_freezes_gates(
     updated_panel,
 ):
+    # Updated Table 1 must recompute statistics through the latest predictor
+    # year while the four R-zone gates stay frozen, so post-2016 data never
+    # moves the cutoffs.
     stats, quantiles = updated_table1(updated_panel)
     stats = stats.set_index("variable")
-    assert stats.loc["delta3_business_debt_gdp", "end_year"] == 2025
-    assert stats.loc["delta3_log_real_equity", "end_year"] == 2025
-    assert stats.loc["delta3_household_debt_gdp", "end_year"] == 2025
-    assert stats.loc["delta3_log_real_house_price", "end_year"] == 2025
+    for variable in [
+        "delta3_business_debt_gdp",
+        "delta3_log_real_equity",
+        "delta3_household_debt_gdp",
+        "delta3_log_real_house_price",
+    ]:
+        assert stats.loc[variable, "end_year"] == latest_predictor_year(updated_panel)
     gates = quantiles.loc[quantiles["used_for_updated_rzone"]]
     assert len(gates) == 4
     expected = {
@@ -115,20 +133,26 @@ def test_updated_table1_recalculates_expanded_statistics_but_freezes_gates(
 
 
 def test_historical_and_updated_figure3_windows_are_kept_separate(updated_panel):
+    # The historical Figure 3 series must still end in 2012 while the updated
+    # series runs to the latest predictor year, so the replication and the
+    # update never blur.
+    latest = latest_predictor_year(updated_panel)
     historical = annual_rzone_fraction(updated_panel)
     updated = annual_rzone_fraction(
         updated_panel,
-        end_year=LATEST_PREDICTOR_YEAR,
+        end_year=latest,
         historical_sample=False,
     )
     assert (historical["year"].min(), historical["year"].max()) == (1950, 2012)
-    assert (updated["year"].min(), updated["year"].max()) == (1950, 2025)
+    assert (updated["year"].min(), updated["year"].max()) == (1950, latest)
     for sector in ["business", "household"]:
         observed = updated[f"{sector}_n"].notna()
         assert updated.loc[observed, f"{sector}_pct"].between(0, 100).all()
 
 
 def test_generated_updated_tables_encode_valid_forecast_endpoints():
+    # Updated Tables 3 and 4 must carry one horizon-consistent forecast end
+    # year per horizon and complete cell coverage, so no forecasts overreach.
     required = [
         OUTPUT_DIR / "table3_post_publication_crisis_probabilities.csv",
         OUTPUT_DIR / "table4_post_publication_models.csv",
@@ -137,7 +161,9 @@ def test_generated_updated_tables_encode_valid_forecast_endpoints():
         pytest.skip("updated exhibits not built -- run `doit analysis:post_publication`")
     table3 = pd.read_csv(required[0])
     table4 = pd.read_csv(required[1])
-    expected = {horizon: 2025 - horizon for horizon in range(1, 5)}
+    expected = {
+        horizon: UPDATED_CRISIS_END_YEAR - horizon for horizon in range(1, 5)
+    }
     for frame in [table3, table4]:
         assert frame.groupby("horizon")["forecast_end_year"].nunique().eq(1).all()
         assert (
@@ -150,12 +176,14 @@ def test_generated_updated_tables_encode_valid_forecast_endpoints():
 def test_original_data_overview_uses_complete_pairs_and_valid_percentages(
     updated_panel,
 ):
+    # The data overview must count complete debt+price pairs in each window
+    # and keep all percentages in [0, 100], so the report's coverage is honest.
     summary = calculate_data_overview(updated_panel)
     assert len(summary) == 4
     assert set(summary["sector"]) == {"business", "household"}
     assert set(zip(summary["start_year"], summary["end_year"], strict=True)) == {
         (1950, 2012),
-        (2013, 2025),
+        (2013, latest_predictor_year(updated_panel)),
     }
     assert summary["coverage_pct"].between(0, 100).all()
     assert summary["rzone_share_pct"].between(0, 100).all()
@@ -174,6 +202,8 @@ def test_original_data_overview_uses_complete_pairs_and_valid_percentages(
 
 
 def test_final_report_includes_all_main_exhibits_and_no_code_listings():
+    # The LaTeX report must input every generated exhibit and contain no code
+    # listings; the rubric requires auto-generated numbers and no snippets.
     source = FINAL_REPORT_SOURCE.read_text(encoding="utf-8")
     required_inputs = [
         "data_overview_summary.tex",

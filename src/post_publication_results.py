@@ -15,7 +15,7 @@ import pandas as pd
 from scipy.stats import t as student_t
 
 from baseline_regressions import DK_BANDWIDTH, _fit
-from build_analysis_panel import load_analysis_panel
+from build_analysis_panel import latest_predictor_year, load_analysis_panel
 from descriptive_results import (
     combine_event_history_panels,
     plot_event_history,
@@ -38,7 +38,6 @@ from table4_results import build_latex as build_table4_latex
 
 DATA_DIR = Path(config("DATA_DIR"))
 OUTPUT_DIR = Path(config("OUTPUT_DIR"))
-LATEST_PREDICTOR_YEAR = 2025
 
 TABLE1_LABELS = {
     "crisis_bvx_extended": "Systemic crisis onset (BVX criteria) (\\%)",
@@ -66,6 +65,11 @@ PERCENT_ROWS = {
 
 
 def _pair_mask(panel: pd.DataFrame, sector: str) -> pd.Series:
+    """Mark rows where both of the sector's predictors are observed.
+
+    :param panel: country-year frame holding the delta3 debt and price columns.
+    :param sector: "business" or "household".
+    """
     price = (
         "delta3_log_real_equity"
         if sector == "business"
@@ -75,6 +79,14 @@ def _pair_mask(panel: pd.DataFrame, sector: str) -> pd.Series:
 
 
 def updated_coverage(panel: pd.DataFrame) -> pd.DataFrame:
+    """Tabulate the span and size of every updated series.
+
+    :param panel: country-year analysis panel with the extended crisis series
+        attached.
+    :returns: one row per predictor, R-Zone, crisis, pair, and forward-window
+        series with its start/end years, observation count, and the number of
+        countries observed in its latest year.
+    """
     specifications = {
         "business_debt_growth": "delta3_business_debt_gdp",
         "real_equity_growth": "delta3_log_real_equity",
@@ -100,9 +112,10 @@ def updated_coverage(panel: pd.DataFrame) -> pd.DataFrame:
                 ),
             }
         )
+    predictor_end_year = latest_predictor_year(panel)
     for sector in ["business", "household"]:
         observed = panel.loc[
-            _pair_mask(panel, sector) & panel["year"].le(LATEST_PREDICTOR_YEAR),
+            _pair_mask(panel, sector) & panel["year"].le(predictor_end_year),
             ["country_iso3", "year"],
         ]
         latest = int(observed["year"].max())
@@ -139,7 +152,13 @@ def updated_coverage(panel: pd.DataFrame) -> pd.DataFrame:
 
 
 def updated_table1(panel: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Recalculate the full Table 1 layout at each series' latest coverage."""
+    """Recalculate the full Table 1 layout at each series' latest coverage.
+
+    :param panel: country-year analysis panel with the extended crisis series
+        attached.
+    :returns: (summary statistics, quantile rows); the quantile rows carry the
+        frozen historical R-zone cutoffs beside the expanded-sample quantiles.
+    """
     variable_specs = [
         (None, "crisis_bvx_extended"),
         (None, "crisis_jst"),
@@ -154,9 +173,10 @@ def updated_table1(panel: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         ("business", "delta3_log_real_equity"),
         ("household", "delta3_log_real_house_price"),
     ]
+    predictor_end_year = latest_predictor_year(panel)
     rows = []
     for sector, variable in variable_specs:
-        mask = panel["year"].le(LATEST_PREDICTOR_YEAR)
+        mask = panel["year"].le(predictor_end_year)
         if sector:
             mask &= _pair_mask(panel, sector)
         sample = panel.loc[mask, ["year", variable]].dropna()
@@ -182,7 +202,7 @@ def updated_table1(panel: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         ("household", "delta3_log_real_house_price", [1 / 3, 2 / 3]),
     ]
     for sector, variable, quantiles in quantile_specs:
-        mask = panel["year"].le(LATEST_PREDICTOR_YEAR)
+        mask = panel["year"].le(predictor_end_year)
         if sector:
             mask &= _pair_mask(panel, sector)
         sample = panel.loc[mask, variable].dropna()
@@ -220,10 +240,17 @@ def updated_table1(panel: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def updated_table3(panel: pd.DataFrame) -> pd.DataFrame:
+    """Recompute the Table 3 crisis-probability matrix on the extended label.
+
+    :param panel: country-year analysis panel with the extended crisis series
+        attached.
+    :returns: one row per sector x horizon x price-tercile x debt-quintile cell
+        with its frequency, difference from the median cell, and inference.
+    """
     rows = []
     for sector, (price_col, debt_col) in SECTOR_COLUMNS.items():
         predictor_sample = panel.loc[
-            _pair_mask(panel, sector) & panel["year"].le(LATEST_PREDICTOR_YEAR)
+            _pair_mask(panel, sector) & panel["year"].le(latest_predictor_year(panel))
         ].copy()
         total = len(predictor_sample)
         distribution = (
@@ -270,6 +297,13 @@ def updated_table3(panel: pd.DataFrame) -> pd.DataFrame:
 
 
 def updated_table4(panel: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Re-estimate the Table 4 predictive regressions on the extended label.
+
+    :param panel: country-year analysis panel with the extended crisis series
+        attached.
+    :returns: (coefficient rows, model rows); model rows include the combined
+        effect of all predictors with its Driscoll-Kraay inference.
+    """
     coefficients = []
     models = []
     for sector in ["business", "household"]:
@@ -331,7 +365,11 @@ def updated_table4(panel: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def _table1_latex(stats: pd.DataFrame, quantiles: pd.DataFrame) -> str:
-    """Render the updated statistics in the paper's grouped Table 1 style."""
+    """Render the updated statistics in the paper's grouped Table 1 style.
+
+    :param stats: the summary-statistics frame from updated_table1.
+    :param quantiles: the quantile frame from updated_table1.
+    """
     summary = stats.set_index("variable").to_dict(orient="index")
     quantile_lookup = {
         (row.variable, row.quantile): row.expanded_sample_quantile
@@ -339,9 +377,18 @@ def _table1_latex(stats: pd.DataFrame, quantiles: pd.DataFrame) -> str:
     }
 
     def number(value: float) -> str:
+        """Format a statistic, printing missing values as empty cells.
+
+        :param value: numeric statistic, or NaN for an empty cell.
+        """
         return "" if pd.isna(value) else f"{value:.2f}"
 
     def row(variable: str, qs: tuple[float | None, ...] = ()) -> str:
+        """Build one table line; qs lists the quantile columns (None = blank).
+
+        :param variable: panel column name keying TABLE1_LABELS and the
+            summary stats.
+        """
         values = [
             TABLE1_LABELS[variable],
             f"{int(summary[variable]['n'])}",
@@ -391,14 +438,20 @@ def _table1_latex(stats: pd.DataFrame, quantiles: pd.DataFrame) -> str:
 
 
 def build_updated_figures(panel: pd.DataFrame) -> None:
+    """Save the post-publication Figure 1 panels and Figure 3 through 2025.
+
+    :param panel: country-year analysis panel with the extended crisis series
+        attached.
+    """
     business = OUTPUT_DIR / "post_publication_business_rzone_timeline.png"
     household = OUTPUT_DIR / "post_publication_household_rzone_timeline.png"
     crisis_label = "Systemic crisis onset (BVX criteria)"
+    predictor_end_year = latest_predictor_year(panel)
     plot_event_history(
         panel,
         "business",
         business,
-        end_year=LATEST_PREDICTOR_YEAR,
+        end_year=predictor_end_year,
         crisis_column="crisis_bvx_extended",
         crisis_label=crisis_label,
     )
@@ -406,7 +459,7 @@ def build_updated_figures(panel: pd.DataFrame) -> None:
         panel,
         "household",
         household,
-        end_year=LATEST_PREDICTOR_YEAR,
+        end_year=predictor_end_year,
         crisis_column="crisis_bvx_extended",
         crisis_label=crisis_label,
     )
@@ -431,7 +484,7 @@ def build_updated_figures(panel: pd.DataFrame) -> None:
     annual = annual_rzone_fraction(
         panel,
         start_year=1950,
-        end_year=LATEST_PREDICTOR_YEAR,
+        end_year=predictor_end_year,
         historical_sample=False,
     )
     annual.to_csv(OUTPUT_DIR / "figure3_global_rzone_post_publication.csv", index=False)
@@ -444,12 +497,15 @@ def build_updated_figures(panel: pd.DataFrame) -> None:
 
 
 def crisis_screen(panel: pd.DataFrame) -> pd.DataFrame:
-    """The post-2016 candidate episodes and each one's verdict.
+    """Build the table of post-2016 candidate episodes and each one's verdict.
 
     The US verdict and drawdown come from the panel, so this table follows
     the data. The Switzerland and Russia rows restate the narrative-screen
     conclusions documented with sources in
     ``post_publication_crisis_chronology.py``.
+
+    :param panel: country-year analysis panel with the extended crisis series
+        attached.
     """
     usa_2023_label = panel.loc[
         panel["country_iso3"].eq("USA") & panel["year"].eq(2023),
@@ -498,6 +554,10 @@ def crisis_screen(panel: pd.DataFrame) -> pd.DataFrame:
 
 
 def _crisis_screen_latex(screen: pd.DataFrame) -> str:
+    """Render the crisis screen as a LaTeX tabular.
+
+    :param screen: the episode-verdict frame produced by crisis_screen.
+    """
     lines = [
         "\\begin{tabular}{lllp{7.2cm}}",
         "\\toprule",
@@ -514,6 +574,7 @@ def _crisis_screen_latex(screen: pd.DataFrame) -> str:
 
 
 def main() -> None:
+    """Build and save every post-publication exhibit and its metadata."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     panel = add_bvx_extended_crisis_series(
         load_analysis_panel(DATA_DIR), load_us_bank_equity(DATA_DIR)

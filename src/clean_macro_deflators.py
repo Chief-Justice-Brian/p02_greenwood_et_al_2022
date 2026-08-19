@@ -1,10 +1,10 @@
 """Build continuous annual CPI and nominal-GDP panels for the GHSS countries.
 
 World Bank WDI is the primary source.  JST fills early observations and gaps
-for the 18 countries it covers.  Because the two providers use different
-index bases and sometimes different currency-unit scales, JST levels are
-rebased country by country using the median ratio during overlap years before
-they are used as a supplement.
+for the subset of sample countries it covers.  Because the two providers use
+different index bases and sometimes different currency-unit scales, JST
+levels are rebased country by country using the median ratio during overlap
+years before they are used as a supplement.
 """
 
 from pathlib import Path
@@ -22,7 +22,15 @@ MACRO_DEFLATORS_FILENAME = "macro_deflators.parquet"
 
 
 def _rebase_supplement(primary, supplement):
-    """Put a supplementary level series on the primary series' scale."""
+    """Put a supplementary level series on the primary series' scale.
+
+    :param primary: level series already on the target scale, indexed by year.
+    :param supplement: level series from the secondary provider, on the same
+        year index, whose scale is to be adjusted.
+    :returns: the supplement multiplied by the median primary/supplement
+        ratio over overlap years; the supplement unchanged when no usable
+        overlap.
+    """
     overlap = primary.notna() & supplement.notna() & (supplement != 0)
     if not overlap.any():
         return supplement
@@ -34,6 +42,16 @@ def _rebase_supplement(primary, supplement):
 
 
 def build_macro_panel(wdi, jst):
+    """Combine WDI and rebased JST levels into the CPI / nominal-GDP panel.
+
+    :param wdi: long WDI pull carrying the FP.CPI.TOTL and NY.GDP.MKTP.CN
+        indicators.
+    :param jst: JST macrohistory table with iso | year | cpi | gdp.
+    :returns: one row per (country, year) with cpi, nominal_gdp, and
+        per-variable source labels; WDI wins wherever it is observed.
+    :raises ValueError: if the panel contains duplicate country-years or a
+        CPI observation is not positive.
+    """
     sample_codes = set(GHSS_COUNTRIES)
 
     wdi = wdi[wdi["country_iso3"].isin(sample_codes)].copy()
@@ -110,7 +128,12 @@ def build_macro_panel(wdi, jst):
 
 
 def load_macro_deflators(data_dir=DATA_DIR):
-    """Load the CPI and nominal-GDP deflator panel: one row per (country, year)."""
+    """Load the CPI and nominal-GDP deflator panel: one row per (country, year).
+
+    :param data_dir: directory holding the project's parquet files (defaults
+        to the configured DATA_DIR).
+    :returns: the loaded panel, one row per (country, year).
+    """
     return pd.read_parquet(Path(data_dir) / MACRO_DEFLATORS_FILENAME)
 
 

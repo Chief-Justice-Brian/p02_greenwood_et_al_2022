@@ -27,13 +27,13 @@ variables. Key columns for our project:
 
 ``RC``
     Revised BVX crisis indicator (the chronology GHSS use).
-``JC``
-    Joint crisis indicator.
-``ReinhartRogoffCrisis``, ``LaevenValenciaCrisis``
-    Alternative chronologies compared in the paper's Table 1.
+``ReinhartRogoffCrisis``
+    Reinhart-Rogoff chronology, compared in the paper's Table 1.
+``Rtot_real``
+    BVX's bank equity real total return series.
 
-The BVX list ends in 2016. The 2023 out-of-sample episode is scored separately
-by our own code against BVX's stated criteria.
+The BVX list ends in 2016. The post-2016 extension applies BVX's stated
+criteria to newer data in ``post_publication_crisis_chronology.py``.
 
 References
 ----------
@@ -88,6 +88,14 @@ def pull_bvx_replication_kit(url=BVX_ZIP_URL, max_attempts=6, retry_wait_seconds
     a 200 response whose payload starts with the zip magic bytes ``PK`` is
     accepted here; anything else is retried, then reported loudly, so a
     non-zip payload can never reach the parser or be written to disk.
+
+    :param url: Dataverse file-access endpoint serving the replication kit zip
+        (defaults to the configured BVX_ZIP_URL).
+    :param max_attempts: total number of download attempts before raising RuntimeError.
+    :param retry_wait_seconds: seconds slept before each retry after the first attempt.
+    :returns: raw bytes of the replication kit zip.
+    :raises RuntimeError: if no attempt returns a 200 response with a zip
+        payload after max_attempts attempts.
     """
     last_status = None
     last_size = None
@@ -110,11 +118,9 @@ def pull_bvx_replication_kit(url=BVX_ZIP_URL, max_attempts=6, retry_wait_seconds
 def parse_bvx_zip(zip_bytes):
     """Extract the crisis list and annual regression panel from the raw zip.
 
-    Returns
-    -------
-    (crisis_list_df, annual_regdata_df) : tuple of pd.DataFrame
-        crisis_list_df: one row per crisis episode
-        annual_regdata_df: one row per country-year
+    :param zip_bytes: raw bytes of the downloaded replication kit zip.
+    :returns: (crisis_list_df, annual_regdata_df): one row per crisis episode
+        and one row per country-year respectively.
     """
     zip_file = zipfile.ZipFile(io.BytesIO(zip_bytes))
     member_names = zip_file.namelist()
@@ -135,12 +141,20 @@ def parse_bvx_zip(zip_bytes):
 
 
 def load_bvx_crisis_list(data_dir=DATA_DIR):
-    """Load the parsed BVX crisis episode list (one row per episode)."""
+    """Load the parsed BVX crisis episode list (one row per episode).
+
+    :param data_dir: directory holding the project's parquet files (defaults to the configured DATA_DIR).
+    :returns: DataFrame with one row per crisis episode.
+    """
     return pd.read_parquet(Path(data_dir) / BVX_CRISIS_LIST_FILENAME)
 
 
 def load_bvx_annual_regdata(data_dir=DATA_DIR):
-    """Load the parsed BVX country-year panel."""
+    """Load the parsed BVX country-year panel.
+
+    :param data_dir: directory holding the project's parquet files (defaults to the configured DATA_DIR).
+    :returns: DataFrame with one row per country-year.
+    """
     return pd.read_parquet(Path(data_dir) / BVX_ANNUAL_REGDATA_FILENAME)
 
 

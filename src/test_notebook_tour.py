@@ -12,6 +12,8 @@ HTML_PATH = ROOT / "_output" / "01_predictable_financial_crises_project_tour.htm
 
 
 def test_notebook_source_has_hw_guide_structure_and_analysis_tour():
+    # The tour source must keep every HW-guide section heading, since the
+    # rubric grades the notebook as a structured walk through the analysis.
     source = SOURCE_PATH.read_text(encoding="utf-8")
     required_sections = [
         "## Summary",
@@ -37,6 +39,8 @@ def test_notebook_source_has_hw_guide_structure_and_analysis_tour():
     reason="notebook not rendered -- run its doit task",
 )
 def test_rendered_notebook_is_executed_without_cell_errors():
+    # The shipped notebook must be fully executed with no error outputs and
+    # report zero out-of-tolerance benchmarks, so readers see verified results.
     notebook = json.loads(NOTEBOOK_PATH.read_text(encoding="utf-8"))
     code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
     assert len(code_cells) >= 20

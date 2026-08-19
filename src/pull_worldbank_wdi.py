@@ -53,13 +53,19 @@ WDI_INDICATORS = {
 ROWS_PER_PAGE = 20000
 
 
-def pull_wdi_indicator(indicator_code, start_year=1950, end_year=2026):
+def pull_wdi_indicator(
+    indicator_code,
+    start_year=config("START_DATE").year,
+    end_year=config("END_DATE").year,
+):
     """Pull one WDI indicator into long format.
 
     :param indicator_code: WDI indicator id inserted in the API path, one of
         the WDI_INDICATORS keys (e.g. ``FP.CPI.TOTL``).
-    :param start_year: first year of the requested date window (inclusive).
-    :param end_year: last year of the requested date window (inclusive).
+    :param start_year: first year of the requested date window (inclusive);
+        defaults to the configured panel window.
+    :param end_year: last year of the requested date window (inclusive);
+        defaults to the configured panel window.
     :returns: long DataFrame with one row per country-year for the indicator.
     """
     rows = []

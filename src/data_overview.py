@@ -1,8 +1,8 @@
 """Create original data-understanding statistics and diagnostics.
 
-These outputs are deliberately separate from the assigned replication
-exhibits. They summarize coverage and the joint predictor distributions that
-produce the sector R-Zone classifications.
+These outputs are separate from the assigned replication exhibits. They
+summarize predictor coverage and show how later observations map into the
+sector R-Zone classifications.
 """
 
 from pathlib import Path
@@ -10,7 +10,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from build_analysis_panel import load_analysis_panel
+from build_analysis_panel import latest_predictor_year, load_analysis_panel
 from settings import config
 
 DATA_DIR = Path(config("DATA_DIR"))
@@ -31,23 +31,43 @@ SECTOR_COLUMNS = {
     ),
 }
 
-PERIODS = {
-    "Historical estimation years": (1950, 2012),
-    "Later predictor observations": (2013, 2025),
-}
+HISTORICAL_PERIOD = (1950, 2012)
+
+
+def _analysis_periods(panel):
+    """Window the historical estimation years and the later predictor years.
+
+    :param panel: country-year analysis panel from load_analysis_panel.
+    :returns: {period label: (start_year, end_year)}.
+    """
+    return {
+        "Historical estimation years": HISTORICAL_PERIOD,
+        "Later predictor observations": (2013, latest_predictor_year(panel)),
+    }
 
 
 def _pair_mask(panel: pd.DataFrame, sector: str) -> pd.Series:
+    """Mark rows where both of the sector's predictors are observed.
+
+    :param panel: country-year frame holding the delta3 debt and price columns.
+    :param sector: "business" or "household", keying into SECTOR_COLUMNS.
+    """
     debt, price, _, _ = SECTOR_COLUMNS[sector]
     return panel[debt].notna() & panel[price].notna()
 
 
 def calculate_data_overview(panel: pd.DataFrame) -> pd.DataFrame:
-    """Summarize complete predictor pairs by sector and analysis period."""
+    """Summarize complete predictor pairs by sector and analysis period.
+
+    :param panel: country-year analysis panel from load_analysis_panel.
+    :returns: one row per sector x period with coverage, predictor moments,
+        debt-price correlation, and the R-Zone share.
+    """
     rows = []
     country_count = panel["country_iso3"].nunique()
+    periods = _analysis_periods(panel)
     for sector, (debt, price, sector_label, price_label) in SECTOR_COLUMNS.items():
-        for period, (start_year, end_year) in PERIODS.items():
+        for period, (start_year, end_year) in periods.items():
             sample = panel.loc[
                 _pair_mask(panel, sector) & panel["year"].between(start_year, end_year),
                 ["country_iso3", "year", debt, price, f"rzone_{sector}"],
@@ -76,12 +96,15 @@ def calculate_data_overview(panel: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_latex_table(summary: pd.DataFrame) -> str:
-    """Render the overview statistics as a compact LaTeX tabular fragment."""
+    """Render the overview statistics as a compact LaTeX tabular fragment.
+
+    :param summary: the frame produced by calculate_data_overview.
+    """
     lines = [
-        r"\begin{tabular}{llrrrrrr}",
+        r"\begin{tabular}{llrrrrrrr}",
         r"\toprule",
-        r"Sector & Period & $N$ & Countries & Coverage & Debt growth & Price growth & Corr. / R-Zone \\",
-        r" & & & & (\%) & Mean (SD) & Mean (SD) & $\rho$ / \% \\",
+        r"Sector & Period & $N$ & Countries & Coverage & Debt growth & Price growth & Corr. & R-Zone \\",
+        r" & & & & (\%) & Mean (SD) & Mean (SD) & $\rho$ & (\%) \\",
         r"\midrule",
     ]
     for row in summary.itertuples(index=False):
@@ -95,7 +118,8 @@ def build_latex_table(summary: pd.DataFrame) -> str:
                     f"{row.coverage_pct:.1f}",
                     f"{row.debt_growth_mean:.1f} ({row.debt_growth_sd:.1f})",
                     f"{row.price_growth_mean:.1f} ({row.price_growth_sd:.1f})",
-                    f"{row.debt_price_correlation:.2f} / {row.rzone_share_pct:.1f}",
+                    f"{row.debt_price_correlation:.2f}",
+                    f"{row.rzone_share_pct:.1f}",
                 ]
             )
             + r" \\"
@@ -105,10 +129,18 @@ def build_latex_table(summary: pd.DataFrame) -> str:
 
 
 def _annual_coverage(panel: pd.DataFrame) -> pd.DataFrame:
+    """Count countries with a complete predictor pair per year and sector.
+
+    :param panel: country-year analysis panel from load_analysis_panel.
+    """
     rows = []
+    predictor_end_year = latest_predictor_year(panel)
     for sector in SECTOR_COLUMNS:
         counts = (
-            panel.loc[_pair_mask(panel, sector) & panel["year"].between(1950, 2025)]
+            panel.loc[
+                _pair_mask(panel, sector)
+                & panel["year"].between(1950, predictor_end_year)
+            ]
             .groupby("year")["country_iso3"]
             .nunique()
         )
@@ -120,7 +152,12 @@ def _annual_coverage(panel: pd.DataFrame) -> pd.DataFrame:
 
 
 def plot_data_overview(panel: pd.DataFrame, output_stem: Path) -> None:
-    """Plot annual coverage and later-period joint predictor distributions."""
+    """Plot annual coverage and later-period joint predictor distributions.
+
+    :param panel: country-year analysis panel from load_analysis_panel.
+    :param output_stem: path without extension; the figure is saved as .png,
+        .pdf, and .jpg.
+    """
     fig = plt.figure(figsize=(11.5, 8.2))
     grid = fig.add_gridspec(2, 2, height_ratios=[0.82, 1.2], hspace=0.38, wspace=0.26)
     coverage_ax = fig.add_subplot(grid[0, :])
@@ -128,6 +165,7 @@ def plot_data_overview(panel: pd.DataFrame, output_stem: Path) -> None:
     household_ax = fig.add_subplot(grid[1, 1])
 
     colors = {"business": "#E76F51", "household": "#009FB7"}
+    predictor_end_year = latest_predictor_year(panel)
     coverage = _annual_coverage(panel)
     for sector in ["business", "household"]:
         subset = coverage.loc[coverage["sector"].eq(sector)]
@@ -138,17 +176,19 @@ def plot_data_overview(panel: pd.DataFrame, output_stem: Path) -> None:
             linewidth=1.8,
             label=SECTOR_COLUMNS[sector][2],
         )
-    coverage_ax.axvspan(2012.5, 2025.5, color="#E9ECEF", zorder=-1)
+    coverage_ax.axvspan(
+        2012.5, predictor_end_year + 0.5, color="#E9ECEF", zorder=-1
+    )
     coverage_ax.axvline(2012.5, color="#555555", linestyle="--", linewidth=1.0)
     coverage_ax.text(
         2013.3,
-        2.0,
+        coverage["countries"].max() * 0.08,
         "Later predictor observations",
         fontsize=8.5,
         color="#444444",
     )
-    coverage_ax.set_xlim(1950, 2025)
-    coverage_ax.set_ylim(0, 43)
+    coverage_ax.set_xlim(1950, predictor_end_year)
+    coverage_ax.set_ylim(0, coverage["countries"].max() * 1.08)
     coverage_ax.set_ylabel("Countries with complete pair")
     coverage_ax.set_title("Panel A: Predictor coverage over time", loc="left")
     coverage_ax.legend(frameon=False, ncol=2, loc="upper left")
@@ -157,7 +197,8 @@ def plot_data_overview(panel: pd.DataFrame, output_stem: Path) -> None:
     for sector, ax in [("business", business_ax), ("household", household_ax)]:
         debt, price, sector_label, price_label = SECTOR_COLUMNS[sector]
         sample = panel.loc[
-            _pair_mask(panel, sector) & panel["year"].between(2013, 2025)
+            _pair_mask(panel, sector)
+            & panel["year"].between(2013, predictor_end_year)
         ].copy()
         in_rzone = sample[f"rzone_{sector}"].eq(1)
         ax.scatter(
@@ -184,13 +225,17 @@ def plot_data_overview(panel: pd.DataFrame, output_stem: Path) -> None:
         price_cutoff = float(panel[f"{sector}_price_t667_cutoff"].dropna().iloc[0])
         ax.axvline(debt_cutoff, color="#333333", linestyle="--", linewidth=1.05)
         ax.axhline(price_cutoff, color="#333333", linestyle="--", linewidth=1.05)
-        ax.set_xlim(sample[debt].quantile(0.01), sample[debt].quantile(0.99))
-        ax.set_ylim(sample[price].quantile(0.01), sample[price].quantile(0.99))
+        # Pad to the full data range so no observation is clipped off the axes
+        debt_pad = 0.05 * (sample[debt].max() - sample[debt].min())
+        price_pad = 0.05 * (sample[price].max() - sample[price].min())
+        ax.set_xlim(sample[debt].min() - debt_pad, sample[debt].max() + debt_pad)
+        ax.set_ylim(sample[price].min() - price_pad, sample[price].max() + price_pad)
         ax.set_xlabel(r"$\Delta_3$ debt / GDP (percentage points)")
         ax.set_ylabel(rf"$\Delta_3$ {price_label} (%)")
         panel_letter = "B" if sector == "business" else "C"
         ax.set_title(
-            f"Panel {panel_letter}: {sector_label} predictors, 2013--2025",
+            f"Panel {panel_letter}: {sector_label} predictors, "
+            f"2013--{predictor_end_year}",
             loc="left",
         )
         ax.grid(alpha=0.18)
@@ -219,6 +264,7 @@ def plot_data_overview(panel: pd.DataFrame, output_stem: Path) -> None:
 
 
 def main() -> None:
+    """Write the overview CSV, LaTeX fragment, and diagnostic figure."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     panel = load_analysis_panel(DATA_DIR)
     summary = calculate_data_overview(panel)

@@ -7,25 +7,24 @@ on printed pages 52--55. Table 1 values live in :mod:`paper_benchmarks`.
 
 Tolerance policy
 ----------------
-Exact reproduction is not possible because the paper's GFD/Bloomberg equity
-series are proprietary and because several public databases have been revised.
-We therefore use absolute tolerances in the units printed by the paper:
+Exact reproduction is not expected (the paper's GFD/Bloomberg equity series
+are proprietary and public databases have been revised); absolute tolerances
+in the units printed by the paper are:
 
 * Table 1: 0.75 percentage points for means, 2.5 for standard deviations,
   and 15% for observation counts.
 * Table 3: 3 percentage points for cell shares and 14 percentage points for
-  cell crisis probabilities/differences. Cells are small, so reassignment of
-  only a few country-years can move a probability materially.
+  cell crisis probabilities/differences.
 * Table 4: 8.25 percentage points for coefficients, 1.5 for t-statistics,
-  2.0 for within-R2, and 15% for N. Interaction coefficients are the most
-  sensitive objects; the tolerance is just above the largest documented
-  reconstruction gap and remains far below the roughly 30--40 point headline
-  R-Zone effects.
-* Figure 1: exact key BVX event years, plus small count/rate tolerances for
+  2.0 for within-R2, and 15% for N.
+* Figure 1: exact key BVX event years, plus count/rate tolerances for
   R-Zone markers whose assignments depend on the substituted price series.
-* Figure 3: plot-derived peak and window benchmarks. Percentages allow 8
-  points and peak years allow one year; these validate the numerical series,
+* Figure 3: plot-derived peak and window benchmarks; percentages allow 8
+  points and peak years allow one year. These validate the numerical series,
   not rendered pixels.
+
+The rationale for each tolerance is documented in
+``docs_src/project_overview/methodology.md``.
 """
 
 TABLE1_MEAN_TOLERANCE_PP = 0.75

@@ -16,6 +16,10 @@ SPECIFICATIONS = ["high_debt_only", "high_price_only", "full", "rzone_only"]
 
 
 def _stars(p_value: float) -> str:
+    """Map a p-value to conventional significance stars.
+
+    :param p_value: two-sided p-value; NaN yields no stars.
+    """
     if pd.isna(p_value):
         return ""
     if p_value < 0.01:
@@ -28,12 +32,22 @@ def _stars(p_value: float) -> str:
 
 
 def _estimate(value: float, p_value: float) -> str:
+    """Format a point estimate with significance stars from its p-value.
+
+    :param value: point estimate in percentage points, rendered to one decimal
+        place.
+    :param p_value: p-value that determines the stars; NaN yields none.
+    """
     return f"{value:.1f}" + (
         rf"\textsuperscript{{{_stars(p_value)}}}" if _stars(p_value) else ""
     )
 
 
 def _coefficient_lookup(coefficients: pd.DataFrame) -> dict[tuple, pd.Series]:
+    """Map (sector, horizon, specification, variable) to its coefficient row.
+
+    :param coefficients: coefficient rows from table4_baseline_coefficients.csv.
+    """
     return {
         (row.sector, int(row.horizon), row.specification, row.variable): row
         for row in coefficients.itertuples(index=False)
@@ -41,6 +55,10 @@ def _coefficient_lookup(coefficients: pd.DataFrame) -> dict[tuple, pd.Series]:
 
 
 def _model_lookup(models: pd.DataFrame) -> dict[tuple, pd.Series]:
+    """Map (sector, horizon, specification) to its model-level row.
+
+    :param models: model-level rows from table4_baseline_models.csv.
+    """
     return {
         (row.sector, int(row.horizon), row.specification): row
         for row in models.itertuples(index=False)
@@ -50,6 +68,13 @@ def _model_lookup(models: pd.DataFrame) -> dict[tuple, pd.Series]:
 def _sector_panel(
     coefficients: pd.DataFrame, models: pd.DataFrame, sector: str, letter: str
 ) -> str:
+    """Render one sector's 16-column panel (4 horizons x 4 specifications).
+
+    :param coefficients: coefficient rows from table4_baseline_coefficients.csv.
+    :param models: model-level rows from table4_baseline_models.csv.
+    :param sector: "business" or "household".
+    :param letter: panel letter shown in the heading ("A" or "B").
+    """
     coefficient_lookup = _coefficient_lookup(coefficients)
     model_lookup = _model_lookup(models)
     suffix = "Bus." if sector == "business" else "HH"
@@ -138,6 +163,11 @@ def _sector_panel(
 
 
 def build_latex(coefficients: pd.DataFrame, models: pd.DataFrame) -> str:
+    """Assemble both sector panels into the full Table 4 LaTeX fragment.
+
+    :param coefficients: coefficient rows from table4_baseline_coefficients.csv.
+    :param models: model-level rows from table4_baseline_models.csv.
+    """
     return "\n\n".join(
         [
             r"\begingroup\scriptsize\renewcommand{\arraystretch}{0.92}",
@@ -150,6 +180,7 @@ def build_latex(coefficients: pd.DataFrame, models: pd.DataFrame) -> str:
 
 
 def main() -> None:
+    """Read the baseline regression CSVs and write the formatted LaTeX table."""
     coefficients = pd.read_csv(COEFFICIENTS_PATH)
     models = pd.read_csv(MODELS_PATH)
     LATEX_PATH.write_text(build_latex(coefficients, models), encoding="utf-8")

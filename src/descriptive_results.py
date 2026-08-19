@@ -1,4 +1,11 @@
-"""Generate GHSS descriptive matrices, timeline, and post-2016 tracker."""
+"""Build Figure 1 (event history), R-zone timelines, and the post-2016 tracker.
+
+``plot_event_history`` and ``combine_event_history_panels`` produce the
+assigned Figure 1 replication (``figure1_event_history.png``/``.pdf``);
+``rzone_summary`` writes ``rzone_validation.csv`` against the paper
+benchmarks; ``post_2016_tracker`` writes the country-by-year classification
+with distance-to-threshold columns.
+"""
 
 from pathlib import Path
 from textwrap import fill
@@ -61,6 +68,13 @@ EVENT_HISTORY_ORDER = [
 
 
 def quantile_cell_results(panel):
+    """Compute raw Table 3 cell sizes and crisis frequencies.
+
+    :param panel: country-year analysis panel from load_analysis_panel.
+    :returns: one row per sector x horizon x price-tercile x debt-quintile cell
+        with its count, share of the sector sample, and crisis frequency in
+        percent.
+    """
     records = []
     for sector in ["business", "household"]:
         sample = panel[panel[f"in_{sector}_sample"]].copy()
@@ -85,6 +99,12 @@ def quantile_cell_results(panel):
 
 
 def rzone_summary(panel):
+    """Compare each sector's R-zone frequency and 3-year crisis rate to the paper.
+
+    :param panel: country-year analysis panel from load_analysis_panel.
+    :returns: one row per sector with our values next to the published
+        benchmarks.
+    """
     rows = []
     paper_frequency = {"business": 6.0, "household": 10.3}
     paper_crisis_3y = {"business": 45.3, "household": 36.8}
@@ -107,6 +127,14 @@ def rzone_summary(panel):
 
 
 def post_2016_tracker(panel):
+    """Build the post-2016 country-by-year R-zone tracker.
+
+    Adds distance-to-cutoff columns (predictor minus frozen historical cutoff)
+    so borderline calls are visible; drops rows where both sector flags are
+    missing.
+
+    :param panel: country-year analysis panel from load_analysis_panel.
+    """
     columns = [
         "country_iso3",
         "country",
@@ -144,6 +172,11 @@ def post_2016_tracker(panel):
 
 
 def _sector_pair_mask(panel, sector):
+    """Mark rows where both of the sector's predictors are observed.
+
+    :param panel: country-year frame holding the delta3 debt and price columns.
+    :param sector: "business" or "household".
+    """
     price_column = (
         "delta3_log_real_equity"
         if sector == "business"
@@ -160,7 +193,17 @@ def plot_event_history(
     crisis_column="crisis_bvx",
     crisis_label="BVX (2019) crisis",
 ):
-    """Plot one publication-style sector R-zone and BVX event history."""
+    """Plot one publication-style sector R-zone and crisis event history.
+
+    :param panel: country-year analysis panel from load_analysis_panel.
+    :param sector: "business" or "household".
+    :param output_path: file path the finished panel image is saved to.
+    :param end_year: last plotted year; coverage lines and axis ticks adjust
+        to it.
+    :param crisis_column: 0/1 panel column whose onsets are drawn as dots.
+    :param crisis_label: legend text for the crisis dots.
+    :raises ValueError: if sector is not "business" or "household".
+    """
     if sector not in {"business", "household"}:
         raise ValueError("sector must be 'business' or 'household'")
 
@@ -300,7 +343,18 @@ def combine_event_history_panels(
     title="Figure 1: Event History",
     caption=None,
 ):
-    """Combine the two sector panels into the paper-style Figure 1."""
+    """Combine the two saved sector panel images into the paper-style Figure 1.
+
+    :param business_path: saved image file of the business-sector panel
+        (Panel A).
+    :param household_path: saved image file of the household-sector panel
+        (Panel B).
+    :param output_paths: every path the combined figure is saved to (e.g.
+        .png and .pdf).
+    :param title: heading text drawn above the combined panels.
+    :param caption: caption text under the title; None uses the replication
+        default.
+    """
     business_image = plt.imread(business_path)
     household_image = plt.imread(household_path)
 

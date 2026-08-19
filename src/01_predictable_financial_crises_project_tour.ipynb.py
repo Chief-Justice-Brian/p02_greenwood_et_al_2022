@@ -76,6 +76,15 @@ pd.set_option("display.float_format", "{:,.2f}".format)
 # country code and calendar year. Each row combines crisis outcomes, cleaned
 # predictors, source labels, sample flags, historical quantile assignments,
 # and R-Zone indicators.
+#
+# A file-format convention marks the pipeline's stage boundary. Everything
+# the pipeline consumes as data, the raw pulls and this panel, crosses
+# stages as Parquet: compressed, typed, and fast, because only code reads
+# it. Everything the pipeline produces as a result, the coefficient tables,
+# summary statistics, and LaTeX fragments in `_output`, is CSV or text:
+# small, diffable between runs, and openable by a grader, a spreadsheet, or
+# R without a Python environment. If a file is Parquet it feeds later
+# stages; if it is CSV it is an answer.
 
 # %%
 panel = load_analysis_panel(DATA_DIR)
@@ -442,6 +451,118 @@ display(
 #
 # The project also compares the GHSS model with bank-fragility and
 # autoregressive extensions. These are new analyses, not paper replications.
+#
+# The fragility extension keeps its three JST ratios separate instead of
+# blending them into an index. The correlations show why: noncore funding and
+# loans-to-deposits partly overlap, while bank capital moves almost
+# independently of both, so a blended coefficient could not say which factor
+# carries the signal.
+
+# %%
+fragility_correlations = pd.read_csv(OUTPUT_DIR / "fragility_correlations.csv")
+fragility_correlations
+
+# %% [markdown]
+# The 80th-percentile fragility cutoff is a convention-matching judgment call,
+# so the proposal commits to sweeping it across candidate quantiles with q=80
+# frozen ex ante as the baseline. The sweep reports the R-Zone x high-noncore
+# interaction with its confidence band and, crucially, the joint cell count:
+# the number of country-years that are simultaneously in the R-Zone and above
+# the fragility cutoff, which is all the data the interaction is estimated
+# from.
+
+# %%
+sweep = pd.read_csv(OUTPUT_DIR / "fragility_threshold_sweep.csv")
+sweep.loc[
+    sweep["horizon"].eq(3),
+    [
+        "sector",
+        "quantile_pct",
+        "joint_cell_count",
+        "interaction_pp",
+        "interaction_ci_low_pp",
+        "interaction_ci_high_pp",
+        "interaction_p_value",
+    ],
+].round(2)
+
+# %% [markdown]
+# The joint cells are thin, single digits for the business sector at the
+# frozen baseline, and at the three-year horizon shown here every confidence
+# band crosses zero. Across the full grid exactly one cell clears zero
+# (household, q=66.7, horizon 2), roughly what forty comparisons produce by
+# chance. The sweep makes the limits of the interaction evidence visible
+# instead of hiding them: no gridpoint supports a robust amplification claim,
+# and the baseline is never revised toward the best-looking cutoff.
+#
+# The flag version bets everything on the few country-years that clear two
+# thresholds at once, so the proposal also commits to a continuous check: the
+# standardized level of each ratio (sign-flipped for lev, so bigger always
+# means more fragile) replaces the 0/1 flag in the same regression. The table
+# shows the fragility level and interaction coefficients, in percentage
+# points of crisis probability per one standard deviation.
+
+# %%
+continuous = pd.read_csv(OUTPUT_DIR / "fragility_continuous_coefficients.csv")
+continuous_terms = continuous.loc[
+    continuous["specification"].eq("continuous_extension")
+    & continuous["variable"].str.contains("fragility_z")
+].assign(
+    term=lambda frame: frame["variable"]
+    .str.startswith("rzone")
+    .map({True: "interaction", False: "level"})
+)
+continuous_terms.pivot_table(
+    index=["fragility_measure", "horizon"],
+    columns=["sector", "term"],
+    values="coefficient_pp",
+).round(1)
+
+# %% [markdown]
+# The continuous check settles the question the sweep raised. The standalone
+# fragility levels for noncore and loans-to-deposits are positive and
+# significant at every horizon in both sectors, rising from roughly 3
+# percentage points per standard deviation at one year to between 8.5 and
+# 12.7 at four years.
+# The R-Zone interactions stay indistinguishable from zero for both funding
+# measures at every horizon, now with the full variation in use, so the
+# amplification null is not an artifact of thin cells. Only the capital
+# measure shows a significant interaction (negative, business sector, longest
+# two horizons), the same sector-inconsistent instability the flag version
+# produced. The evidence therefore supports funding fragility as a standalone
+# additive crisis channel, not as an amplifier of credit booms.
+#
+# Two further precommitted checks pin down what kind of predictor fragility
+# is. The first races the noncore level against its own 3-year change in one
+# specification; the second adds a squared term to the continuous model. The
+# table shows all three coefficients per sector and horizon.
+
+# %%
+form = pd.read_csv(OUTPUT_DIR / "fragility_form_checks_coefficients.csv")
+form_terms = pd.concat(
+    [
+        form.loc[
+            form["specification"].eq("level_and_change")
+            & form["variable"].str.contains("fragility_z")
+        ],
+        form.loc[
+            form["specification"].eq("level_quadratic")
+            & form["variable"].str.endswith("_sq")
+        ],
+    ]
+)
+form_terms.pivot_table(
+    index=["sector", "horizon"], columns="variable", values="coefficient_pp"
+).round(1)
+
+# %% [markdown]
+# The level keeps its full effect while the 3-year change carries nothing,
+# and the quadratic term is negligible everywhere. Fragility risk therefore
+# sits in what the funding structure is, not in how fast it got that way,
+# the opposite time signature of the paper's boom variables, and it rises
+# linearly with no threshold. That is why no flag version of this variable
+# can reach R-Zone-like precision, and why the monitor should present
+# fragility as a continuous gauge rather than a binary alarm.
 
 # %%
 dynamic_models = pd.read_csv(OUTPUT_DIR / "dynamic_regression_models.csv")
@@ -453,8 +574,73 @@ dynamic_models.pivot_table(
 
 # %% [markdown]
 # Adding crisis memory and lagged predictors improves within fit and in-sample
-# AUC at every horizon. The AUC calculation is in-sample, so it demonstrates
-# incremental fit rather than a definitive out-of-sample forecast gain.
+# AUC at every horizon, most visibly at one and two years. The AUC calculation
+# is in-sample, so it demonstrates incremental fit rather than a definitive
+# out-of-sample forecast gain.
+#
+# The paper's footnote 10 claims, without a supporting table, that this
+# dynamic version gives "qualitatively similar results." Our proposal pinned
+# the phrase down before estimation: signs match, significance survives at
+# the same horizons, and the dynamic R-Zone coefficient sits within one
+# standard error of its static value. The check below applies the tightest
+# criterion cell by cell.
+
+# %%
+dynamic_coefficients = pd.read_csv(OUTPUT_DIR / "dynamic_regression_coefficients.csv")
+rzone_rows = dynamic_coefficients.loc[
+    dynamic_coefficients["variable"].str.startswith("rzone")
+]
+verdict = rzone_rows.pivot_table(
+    index=["sector", "horizon"],
+    columns="specification",
+    values=["coefficient_pp", "std_error_pp"],
+)
+verdict["within_one_se"] = (
+    verdict[("coefficient_pp", "autoregressive")]
+    - verdict[("coefficient_pp", "ghss_same_sample")]
+).abs() <= verdict[("std_error_pp", "ghss_same_sample")]
+verdict.round(2)
+
+# %% [markdown]
+# Every cell passes all three criteria, so the footnote's unshown robustness
+# claim verifies on our panel: the R-Zone effect is not an artifact of
+# omitted dynamics.
+#
+# A last dynamics question the static paper cannot ask: what happens after a
+# country LEAVES the R-Zone? The zone's price condition switches off when a
+# boom stalls, which is often the prelude to the bust, so exit years may be
+# quietly dangerous. Mutually exclusive one-, two-, and
+# three-years-since-exit indicators, with elevated-but-decaying risk as the
+# precommitted expectation, give the answer. Because a crisis itself crushes
+# prices and ejects a country from the zone, every specification also runs
+# on origins with no BVX crisis in the current or three prior years; only
+# that sample reads the exit effect as advance warning rather than overlap
+# with an episode already underway.
+
+# %%
+exit_coefficients = pd.read_csv(OUTPUT_DIR / "rzone_exit_coefficients.csv")
+exit_terms = exit_coefficients.loc[
+    exit_coefficients["variable"].str.contains("recent_exit|exited")
+]
+exit_terms.pivot_table(
+    index=["sector", "horizon"],
+    columns=["sample", "variable"],
+    values="coefficient_pp",
+).round(1)
+
+# %% [markdown]
+# On all origins the sectors split sharply: household exit years carry
+# elevated risk at every horizon on top of the current-zone effect, while
+# business exit years show nothing. The all-origins headline does not
+# survive its own robustness check, though. About two-fifths of household
+# exit years sit within two years after a BVX crisis, and the estimate leans
+# on the 2008-2011 wave, where BVX record second crisis onsets (Spain,
+# Greece, Ireland, Denmark, Italy) that first-leg exit years mechanically
+# "predict." On the no-recent-crisis sample the coefficients stay similar in
+# size but mostly lose significance. The honest conclusion is two-sided:
+# exit years are not evidence of safety, but the panel cannot show they
+# carry standalone advance warning, so the monitor treats post-exit years as
+# unresolved rather than calm.
 
 # %%
 missed = pd.read_csv(OUTPUT_DIR / "missed_crisis_fragility.csv")
@@ -463,7 +649,7 @@ pd.Series(
         "Historical crisis onsets examined": len(missed),
         "Missed by both R-Zones": int(missed["missed_by_rzone"].sum()),
         "Misses with fragility data": int(
-            missed.loc[missed["missed_by_rzone"], "max_prior_noncore_percentile"]
+            missed.loc[missed["missed_by_rzone"], "prior_noncore_fragility_pct"]
             .notna()
             .sum()
         ),

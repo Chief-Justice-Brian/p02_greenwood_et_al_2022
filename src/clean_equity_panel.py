@@ -1,4 +1,11 @@
-"""Construct spliced three-year real equity-price growth."""
+"""Construct spliced three-year real equity-price growth.
+
+Sources in priority: IMF share prices, then JST, then OECD share
+prices (the OECD series is the project's post-2016 fallback, since the IMF
+stopped collecting share prices). IMF and OECD nominal indices are deflated
+with the macro CPI panel; JST growth uses its own capital-gain and CPI
+series. Output: ``equity_panel.parquet``, one row per (country, year).
+"""
 
 from pathlib import Path
 
@@ -18,7 +25,16 @@ EQUITY_PANEL_FILENAME = "equity_panel.parquet"
 
 
 def select_imf_series(imf):
-    """Select one stable (indicator, transformation) pair per country."""
+    """Select one stable (indicator, transformation) IMF series per country.
+
+    Keeps the pair with the most observations, breaking ties in favor of the
+    EQTS (total share prices) indicator and the PA_IX (period-average index)
+    transformation, then alphabetically.
+
+    :param imf: long IMF share-price pull, one row per
+        country-indicator-transformation-year.
+    :returns: the rows of the chosen series for each country.
+    """
     imf = imf[imf["country_iso3"].isin(GHSS_COUNTRIES)].copy()
     scores = (
         imf.groupby(["country_iso3", "indicator", "transformation"])
@@ -49,6 +65,14 @@ def select_imf_series(imf):
 
 
 def _real_growth_from_nominal_index(levels, macro):
+    """Deflate a nominal index by the macro CPI and take 3-year log changes (x100).
+
+    :param levels: country_iso3 | year | value nominal index levels from one
+        source.
+    :param macro: CPI / nominal-GDP deflator panel supplying cpi per
+        (country, year).
+    :returns: country_iso3 | year | delta3 log changes (x100).
+    """
     merged = levels.merge(
         macro[["country_iso3", "year", "cpi"]],
         on=["country_iso3", "year"],
@@ -60,6 +84,15 @@ def _real_growth_from_nominal_index(levels, macro):
 
 
 def _jst_real_growth(jst):
+    """Compute 3-year real equity growth from JST capital gains and CPI.
+
+    Cumulates log(1 + eq_capgain) over 3 years, subtracts the 3-year CPI log
+    change, and scales by 100.
+
+    :param jst: JST macrohistory table carrying iso, year, eq_capgain, and
+        cpi.
+    :returns: country_iso3 | year | delta3.
+    """
     frames = []
     for country_iso3, country in jst[jst["iso"].isin(GHSS_COUNTRIES)].groupby("iso"):
         country = country.set_index("year").sort_index()
@@ -78,6 +111,18 @@ def _jst_real_growth(jst):
 
 
 def build_equity_panel(imf, jst, oecd, macro):
+    """Build the spliced 3-year real equity-growth panel (IMF > JST > OECD).
+
+    :param imf: long IMF share-price pull
+        (country-indicator-transformation-year).
+    :param jst: JST macrohistory table (eq_capgain and cpi).
+    :param oecd: annual OECD share-price pull, country_iso3 | year | value.
+    :param macro: deflator panel whose cpi deflates the nominal IMF and OECD
+        indices.
+    :returns: one row per (country, year) with delta3_log_real_equity and its
+        equity_source label.
+    :raises ValueError: if the panel contains duplicate country-years.
+    """
     imf_levels = select_imf_series(imf)[["country_iso3", "year", "value"]]
     oecd_levels = oecd[oecd["country_iso3"].isin(GHSS_COUNTRIES)][
         ["country_iso3", "year", "value"]
@@ -101,7 +146,12 @@ def build_equity_panel(imf, jst, oecd, macro):
 
 
 def load_equity_panel(data_dir=DATA_DIR):
-    """Load the spliced real equity-growth panel: one row per (country, year)."""
+    """Load the spliced real equity-growth panel: one row per (country, year).
+
+    :param data_dir: directory holding the project's parquet files (defaults
+        to the configured DATA_DIR).
+    :returns: the loaded panel, one row per (country, year).
+    """
     return pd.read_parquet(Path(data_dir) / EQUITY_PANEL_FILENAME)
 
 

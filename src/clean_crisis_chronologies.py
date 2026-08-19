@@ -1,4 +1,14 @@
-"""Standardize the crisis chronologies and related BVX outcome variables."""
+"""Standardize the crisis chronologies into one country-year panel.
+
+BVX's revised chronology (RC) is the baseline crisis outcome; JST's
+crisisJST and the Reinhart-Rogoff indicator carried in the BVX kit are kept
+for Table 1's chronology comparison, alongside BVX's bank equity crash,
+bank failure, and panic flags and real GDP growth. Two support conventions:
+bank equity crashes are recorded only in event years, so the indicator is
+zero-filled elsewhere; the RR chronology is defined only for RR-covered
+countries and only through 2010, and stays missing outside that support.
+Output: ``crisis_panel.parquet``, one row per (country, year).
+"""
 
 from pathlib import Path
 
@@ -15,6 +25,16 @@ CRISIS_PANEL_FILENAME = "crisis_panel.parquet"
 
 
 def build_crisis_panel(bvx, jst):
+    """Standardize the BVX and JST chronologies into one crisis panel.
+
+    :param bvx: BVX annual regression file (ISO3 | year | RC | RR and
+        bank-stress columns).
+    :param jst: JST macrohistory table carrying crisisJST.
+    :returns: one row per (country, year); indicators are validated 0/1 and
+        real GDP growth is rescaled to percent.
+    :raises ValueError: if a crisis indicator is not binary or the panel
+        contains duplicate country-years.
+    """
     sample_codes = set(GHSS_COUNTRIES)
     bvx = bvx[bvx["ISO3"].isin(sample_codes)].copy()
     bvx["year"] = bvx["year"].astype(int)
@@ -86,7 +106,12 @@ def build_crisis_panel(bvx, jst):
 
 
 def load_crisis_panel(data_dir=DATA_DIR):
-    """Load the standardized crisis-chronology panel: one row per (country, year)."""
+    """Load the standardized crisis-chronology panel: one row per (country, year).
+
+    :param data_dir: directory holding the project's parquet files (defaults
+        to the configured DATA_DIR).
+    :returns: the loaded panel, one row per (country, year).
+    """
     return pd.read_parquet(Path(data_dir) / CRISIS_PANEL_FILENAME)
 
 

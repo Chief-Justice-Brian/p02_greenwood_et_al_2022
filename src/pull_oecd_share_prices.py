@@ -65,7 +65,12 @@ OECD_SHARE_PRICES_URL = (
 
 
 def pull_oecd_share_prices(url=OECD_SHARE_PRICES_URL):
-    """Download annual OECD share price indices for all available countries."""
+    """Download annual OECD share price indices for all available countries.
+
+    :param url: SDMX REST query; its key wildcards ref_area, pins annual frequency and
+        the SHARE measure, and leaves the six remaining dimensions wildcarded.
+    :returns: long DataFrame with one row per country-year.
+    """
     response = requests.get(url, timeout=300)
     response.raise_for_status()
 
@@ -86,7 +91,11 @@ def pull_oecd_share_prices(url=OECD_SHARE_PRICES_URL):
 
 
 def load_oecd_share_prices(data_dir=DATA_DIR):
-    """Load the OECD share price panel: country_iso3 | year | value."""
+    """Load the OECD share price panel: country_iso3 | year | value.
+
+    :param data_dir: directory holding the project's parquet files (defaults to the configured DATA_DIR).
+    :returns: DataFrame with one row per country-year.
+    """
     return pd.read_parquet(Path(data_dir) / OECD_SHARE_PRICES_FILENAME)
 
 

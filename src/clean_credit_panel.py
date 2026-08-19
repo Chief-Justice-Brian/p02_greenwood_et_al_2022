@@ -1,8 +1,17 @@
 """Construct spliced three-year credit-growth measures.
 
 Three-year changes are calculated inside each provider before splicing, as
-required by GHSS footnote 5.  IMF GDD is primary, BIS fills gaps (and carries
-the extension forward), and JST supplies early history for its 18 countries.
+required by GHSS footnote 6. Sources in splice priority: IMF GDD, then BIS
+(which also carries the extension forward), then JST supplying early history
+for the subset of sample countries it covers.
+
+Four measures are produced: the business, household, and total private
+debt-to-GDP three-year changes (percentage points), and the three-year log
+change in real total private debt (x100). The real-debt measure deflates
+each provider's debt level with the macro CPI panel, except JST, whose own
+CPI is used so its native scale stays consistent. Output:
+``credit_panel.parquet``, one row per (country, year), with a source label
+beside every measure.
 """
 
 from pathlib import Path
@@ -28,6 +37,13 @@ CREDIT_PANEL_FILENAME = "credit_panel.parquet"
 
 
 def _gdd_levels(gdd, indicator):
+    """Extract one IMF GDD indicator as country_iso3 | year | value levels.
+
+    :param gdd: long IMF Global Debt Database pull, one row per
+        country-indicator-year.
+    :param indicator: GDD indicator code to extract (e.g. "NFC_LS").
+    :returns: country_iso3 | year | value levels for the indicator.
+    """
     return (
         gdd[gdd["indicator"].eq(indicator)][["country_iso3", "year", "value"]]
         .drop_duplicates(["country_iso3", "year"])
@@ -36,12 +52,23 @@ def _gdd_levels(gdd, indicator):
 
 
 def _bis_levels(bis, borrower):
+    """Annualize BIS credit-to-GDP levels for one borrower sector.
+
+    Keeps all-lender, market-value, break-adjusted, percent-of-GDP series.
+
+    :param bis: quarterly BIS total credit pull, one row per series-quarter
+        with SDMX dimension columns.
+    :param borrower: BIS tc_borrowers code ("N" non-financial corporations,
+        "H" households, "P" private non-financial sector).
+    :returns: annual country_iso3 | year | value levels for the sector.
+    """
+    # Dimension codes are documented in pull_bis_total_credit's docstring.
     selected = bis[
-        bis["tc_borrowers"].eq(borrower)
-        & bis["tc_lenders"].eq("A")
-        & bis["valuation"].eq("M")
-        & bis["unit_type"].eq("770")
-        & bis["tc_adjust"].eq("A")
+        bis["tc_borrowers"].eq(borrower)  # the requested sector
+        & bis["tc_lenders"].eq("A")  # credit from all lending sectors
+        & bis["valuation"].eq("M")  # market value
+        & bis["unit_type"].eq("770")  # percent of GDP
+        & bis["tc_adjust"].eq("A")  # adjusted for breaks
     ].copy()
     selected["country_iso3"] = selected["borrowers_country"].map(BIS_ISO2_TO_ISO3)
     selected = selected.dropna(subset=["country_iso3"])
@@ -49,6 +76,13 @@ def _bis_levels(bis, borrower):
 
 
 def _jst_ratio_levels(jst, debt_column):
+    """Compute one JST debt column as a percent-of-GDP level series.
+
+    :param jst: JST macrohistory table with iso, year, gdp, and the nominal
+        debt level columns.
+    :param debt_column: JST nominal debt column to convert (e.g. "tbus").
+    :returns: country_iso3 | year | value percent-of-GDP levels.
+    """
     selected = jst[jst["iso"].isin(GHSS_COUNTRIES)][
         ["iso", "year", debt_column, "gdp"]
     ].copy()
@@ -60,10 +94,28 @@ def _jst_ratio_levels(jst, debt_column):
 
 
 def _three_year_change(levels):
+    """Take 3-year simple differences of the value column (percentage points).
+
+    :param levels: country_iso3 | year | value ratio levels from one provider.
+    :returns: country_iso3 | year | delta3 changes in percentage points.
+    """
     return delta3_within_source(levels, "value", is_log=False)
 
 
 def _splice_ratio(gdd, bis, jst, gdd_indicator, bis_borrower, jst_column):
+    """Splice one sector's 3-year debt-to-GDP change: IMF GDD, then BIS, then JST.
+
+    :param gdd: long, indicator-coded IMF Global Debt Database pull.
+    :param bis: quarterly BIS total credit pull.
+    :param jst: JST macrohistory table.
+    :param gdd_indicator: the sector's series code in IMF GDD (e.g. "NFC_LS"
+        for business).
+    :param bis_borrower: the sector's series code in BIS (e.g. "N" for
+        business).
+    :param jst_column: the sector's series code in JST (e.g. "tbus" for
+        business).
+    :returns: spliced country_iso3 | year | delta3 | source rows.
+    """
     return splice_by_priority(
         [
             ("IMF_GDD", _three_year_change(_gdd_levels(gdd, gdd_indicator))),
@@ -74,6 +126,15 @@ def _splice_ratio(gdd, bis, jst, gdd_indicator, bis_borrower, jst_column):
 
 
 def _real_debt_change(levels, macro, debt_is_ratio):
+    """Compute the 3-year log change (x100) of real debt from one source.
+
+    :param levels: country_iso3 | year | value levels for one provider.
+    :param macro: deflator panel supplying cpi and nominal_gdp.
+    :param debt_is_ratio: if True, ``value`` is percent of GDP and is
+        converted to a currency level via nominal GDP before deflating by
+        CPI.
+    :returns: country_iso3 | year | delta3 log changes (x100).
+    """
     merged = levels.merge(
         macro[["country_iso3", "year", "cpi", "nominal_gdp"]],
         on=["country_iso3", "year"],
@@ -89,6 +150,16 @@ def _real_debt_change(levels, macro, debt_is_ratio):
 
 
 def build_credit_panel(gdd, bis, jst, macro):
+    """Assemble the spliced 3-year credit-growth panel across providers.
+
+    :param gdd: raw IMF Global Debt Database pull (long, indicator-coded).
+    :param bis: raw BIS total credit pull (quarterly).
+    :param jst: JST macrohistory table.
+    :param macro: CPI / nominal-GDP deflator panel, for real debt levels.
+    :returns: one row per (country, year); every measure carries a source
+        label.
+    :raises ValueError: if the panel contains duplicate country-years.
+    """
     sample_codes = set(GHSS_COUNTRIES)
     gdd = gdd[gdd["country_iso3"].isin(sample_codes)].copy()
 
@@ -152,7 +223,12 @@ def build_credit_panel(gdd, bis, jst, macro):
 
 
 def load_credit_panel(data_dir=DATA_DIR):
-    """Load the spliced credit-growth panel: one row per (country, year)."""
+    """Load the spliced credit-growth panel: one row per (country, year).
+
+    :param data_dir: directory holding the project's parquet files (defaults
+        to the configured DATA_DIR).
+    :returns: the loaded panel, one row per (country, year).
+    """
     return pd.read_parquet(Path(data_dir) / CREDIT_PANEL_FILENAME)
 
 

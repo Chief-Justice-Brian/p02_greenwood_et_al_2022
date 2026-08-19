@@ -20,21 +20,39 @@ def annual_rzone_fraction(
     end_year: int = END_YEAR,
     historical_sample: bool = True,
 ) -> pd.DataFrame:
-    """Return annual R-Zone shares using each sector's available-country count."""
+    """Return annual R-Zone shares using each sector's available-country count.
+
+    :param panel: full country-year analysis panel from load_analysis_panel.
+    :param start_year: first year of the output series (defaults to the
+        module's START_YEAR).
+    :param end_year: last year of the output series (defaults to the module's
+        END_YEAR).
+    :param historical_sample: if True, restrict to the paper's in-sample rows;
+        if False, use every row with a non-missing R-Zone flag.
+    :returns: annual R-Zone shares by sector, one row per year.
+    """
     years = pd.DataFrame({"year": range(start_year, end_year + 1)})
     output = years
     for sector in ["business", "household"]:
+        # Denominator rule: in the historical figure a country counts only
+        # while it is in the paper's estimation sample; in the updated figure
+        # any country-year with a classifiable R-Zone flag counts.
         eligible = (
             panel[f"in_{sector}_sample"]
             if historical_sample
             else panel[f"rzone_{sector}"].notna()
         )
+        # The sector's classifiable country-years inside the plot window:
+        # one row per (country, year) with a 0/1 R-Zone flag.
         sample = panel.loc[
             eligible
             & panel["year"].between(start_year, end_year)
             & panel[f"rzone_{sector}"].notna(),
             ["year", f"rzone_{sector}"],
         ]
+        # Collapse to one row per year: the mean of the 0/1 flags is the
+        # fraction of available countries in the R-Zone that year, and the
+        # count records that year's denominator.
         annual = (
             sample.groupby("year")[f"rzone_{sector}"]
             .agg(["mean", "count"])
@@ -47,6 +65,8 @@ def annual_rzone_fraction(
             )
         )
         annual[f"{sector}_pct"] = 100.0 * annual[f"{sector}_fraction"]
+        # Left-join onto the full year grid so years with no classifiable
+        # countries stay visible as gaps instead of silently disappearing.
         output = output.merge(annual, on="year", how="left")
     return output
 
@@ -54,6 +74,15 @@ def annual_rzone_fraction(
 def plot_figure3(
     annual: pd.DataFrame, png_path: Path, pdf_path: Path, jpg_path: Path
 ) -> None:
+    """Plot the business and household R-Zone shares and save PNG, PDF, and JPG.
+
+    :param annual: annual_rzone_fraction output with year and sector ``*_pct``
+        columns.
+    :param png_path: destination file for the 300-dpi PNG rendering.
+    :param pdf_path: destination file for the vector PDF rendering.
+    :param jpg_path: destination file for the 300-dpi white-background JPG
+        rendering.
+    """
     plt.style.use("ggplot")
     fig, ax = plt.subplots(figsize=(9.2, 5.3))
     ax.plot(
@@ -90,6 +119,7 @@ def plot_figure3(
 
 
 def main() -> None:
+    """Build the annual R-Zone series, save the CSV, and render Figure 3."""
     panel = load_analysis_panel(DATA_DIR)
     annual = annual_rzone_fraction(panel)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

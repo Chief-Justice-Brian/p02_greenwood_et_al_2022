@@ -1,12 +1,14 @@
-"""Unit tests for the ``rzone_features`` functions on small synthetic panels."""
+"""Unit tests for the ``rzone_features`` functions on small hand-built inputs."""
 
 import numpy as np
 import pandas as pd
 
 from rzone_features import (
     add_future_event_windows,
+    add_zone_exit_buckets,
     assign_bucket,
     indicator_above,
+    indicator_below,
     quantile_cutoffs,
 )
 
@@ -50,3 +52,28 @@ def test_fixed_cutoffs_and_rzone_assignment():
     assert buckets.tolist() == [1, 2, 3, pd.NA]
     assert high_debt.tolist() == [0, 1, pd.NA]
     assert rzone.tolist() == [0, 1, pd.NA]
+
+
+def test_zone_exit_buckets_track_time_since_membership():
+    # Exit buckets must be mutually exclusive, fire at the exact distance
+    # since the last zone year, and be NA only when the observed years truly
+    # cannot determine the value: an in-zone row is 0 in every bucket, and
+    # one observed disqualifying year is enough for a 0 despite missing lags.
+    panel = pd.DataFrame(
+        {
+            "country_iso3": ["AAA"] * 6,
+            "year": [2000, 2001, 2002, 2003, 2004, 2005],
+            "zone": [0, 1, 0, 0, 0, 1],
+        }
+    )
+    result = add_zone_exit_buckets(panel, "zone")
+    assert result["zone_exited_1y"].tolist() == [pd.NA, 0, 1, 0, 0, 0]
+    assert result["zone_exited_2y"].tolist() == [pd.NA, 0, 0, 1, 0, 0]
+    assert result["zone_exited_3y"].tolist() == [pd.NA, 0, 0, 0, 1, 0]
+
+
+def test_indicator_below_flags_thin_values_and_keeps_na():
+    # The lev fragility flag marks THIN capital, so the flipped indicator must
+    # fire strictly below the cutoff, stay 0 at it, and propagate missing.
+    flags = indicator_below(pd.Series([1.0, 5.0, 9.0, np.nan]), 5.0)
+    assert flags.tolist() == [1, 0, 0, pd.NA]
