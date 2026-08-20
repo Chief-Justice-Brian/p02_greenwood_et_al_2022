@@ -3,57 +3,43 @@ type = "pipeline"
 chartbook_format_version = "0.0.2"
 
 [site]
-title = "p02_greenwood_et_al_2022"
+title = "Predictable Financial Crises"
 author = "Brian Nguyen & Clara Duan"
-copyright = "2025"
+copyright = "2026"
 logo_path = ""
 favicon_path = ""
 
 [pipeline]
 id = "P0"
-pipeline_name = "p02_greenwood_et_al_2022"
-pipeline_description = "Replication of Predictable Financial Crises FINM-32900"
+pipeline_name = "Predictable Financial Crises"
+pipeline_description = "Replication and post-publication extension of Greenwood, Hanson, Shleifer & Sorensen (2022), Predictable Financial Crises, for FINM 32900."
 lead_pipeline_developer = "Brian Nguyen & Clara Duan"
 contributors = ["Brian Nguyen & Clara Duan"]
 software_modules_command = "module load anaconda3/3.11.4 TeXLive/2023"
 runs_on_grid_or_windows_or_other = "Windows/Linux/MacOS"
-git_repo_URL = ""
+git_repo_URL = "https://github.com/Chief-Justice-Brian/p02_greenwood_et_al_2022"
 README_file_path = "./README.md"
 site_dir = "./docs_src/"
 
 [notebooks]
 
 
-[notebooks.01_example_notebook_interactive]
-notebook_name = "Example Notebook Interactive"
-notebook_description = "Example notebook for demonstrating how to construct a Chartbook notebook."
-notebook_path = "_output/01_example_notebook_interactive.ipynb"
-
-
-[notebooks.02_example_with_dependencies]
-notebook_name = "Example Notebook with Dependencies"
-notebook_description = "Example notebook demonstrating dependencies on data pulls."
-notebook_path = "_output/02_example_with_dependencies.ipynb"
-
-
-
-[notebooks.03_public_repo_summary_charts]
-notebook_name = "Public Repo Summary Charts"
-notebook_description = "Summary charts using public repo data."
-notebook_path = "_output/03_public_repo_summary_charts.ipynb"
-
+[notebooks.01_predictable_financial_crises_project_tour]
+notebook_name = "Predictable Financial Crises Project Tour"
+notebook_description = "Guided tour of the cleaned panel, replication exhibits, post-publication update, and extensions."
+notebook_path = "_output/01_predictable_financial_crises_project_tour.ipynb"
 
 
 [dataframes]
 
 
-[dataframes.repo_public]
-dataframe_name = "Public Repo Data"
-short_description_df = "Public repo series and related economic and financial aggregates."
-data_sources = ["FRED", "Office of Financial Research"]
-data_providers = ["FRED", "Office of Financial Research"]
-links_to_data_providers = ["https://fred.stlouisfed.org/", "https://www.financialresearch.gov/short-term-funding-monitor/api/"]
-topic_tags = ["Short Term Funding", "Repo"]
+[dataframes.credit_panel]
+dataframe_name = "Cleaned Credit Panel"
+short_description_df = "One row per (country, year): spliced three-year business, household, and total debt-to-GDP changes and real debt growth, with a source label beside every measure."
+data_sources = ["IMF Global Debt Database", "BIS Total Credit Statistics", "JST MacroHistory"]
+data_providers = ["IMF", "BIS", "JST"]
+links_to_data_providers = ["https://www.imf.org/external/datamapper/datasets/GDD", "https://data.bis.org/topics/TOTAL_CREDIT", "https://www.macrohistory.net/database/"]
+topic_tags = ["Financial Crises", "Credit Growth"]
 type_of_data_access = "Public"
 data_license = "No"
 license_expiration_date = "N/A"
@@ -61,30 +47,112 @@ need_to_contact_provider = "No"
 provider_contact_info = ""
 restriction_on_use = "No"
 how_is_pulled = "Web API via Python"
-path_to_parquet_data = "./_data/repo_public.parquet"
-path_to_excel_data = "./_data/repo_public.xlsx"
-date_col = "date"
-dataframe_docs_path = "./docs_src/dataframes/repo_public.md"
+path_to_parquet_data = "./_data/credit_panel.parquet"
+path_to_excel_data = ""
+date_col = "year"
+dataframe_docs_path = "./docs_src/dataframes/credit_panel.md"
+
+
+[dataframes.equity_panel]
+dataframe_name = "Cleaned Equity Panel"
+short_description_df = "One row per (country, year): spliced three-year real equity-price growth from IMF share prices, JST, and OECD share prices."
+data_sources = ["IMF share price indices", "JST MacroHistory", "OECD share prices"]
+data_providers = ["IMF", "JST", "OECD"]
+links_to_data_providers = ["https://data.imf.org/", "https://www.macrohistory.net/database/", "https://data-explorer.oecd.org/"]
+topic_tags = ["Financial Crises", "Asset Prices", "Equity"]
+type_of_data_access = "Public"
+data_license = "No"
+license_expiration_date = "N/A"
+need_to_contact_provider = "No"
+provider_contact_info = ""
+restriction_on_use = "No"
+how_is_pulled = "Web API via Python"
+path_to_parquet_data = "./_data/equity_panel.parquet"
+path_to_excel_data = ""
+date_col = "year"
+dataframe_docs_path = "./docs_src/dataframes/equity_panel.md"
+
+
+[dataframes.house_price_panel]
+dataframe_name = "Cleaned House Price Panel"
+short_description_df = "One row per (country, year): spliced three-year real house-price growth from BIS residential property prices, OECD analytical house prices, and JST."
+data_sources = ["BIS Residential Property Prices", "OECD Analytical House Prices", "JST MacroHistory"]
+data_providers = ["BIS", "OECD", "JST"]
+links_to_data_providers = ["https://data.bis.org/topics/RPP", "https://data-explorer.oecd.org/", "https://www.macrohistory.net/database/"]
+topic_tags = ["Financial Crises", "Asset Prices", "Housing"]
+type_of_data_access = "Public"
+data_license = "No"
+license_expiration_date = "N/A"
+need_to_contact_provider = "No"
+provider_contact_info = ""
+restriction_on_use = "No"
+how_is_pulled = "Web API via Python"
+path_to_parquet_data = "./_data/house_price_panel.parquet"
+path_to_excel_data = ""
+date_col = "year"
+dataframe_docs_path = "./docs_src/dataframes/house_price_panel.md"
+
+
+[dataframes.macro_deflators]
+dataframe_name = "Macro Deflators Panel"
+short_description_df = "One row per (country, year): continuous CPI and nominal-GDP series, World Bank WDI primary with rebased JST fill."
+data_sources = ["World Bank WDI", "JST MacroHistory"]
+data_providers = ["World Bank", "JST"]
+links_to_data_providers = ["https://databank.worldbank.org/source/world-development-indicators", "https://www.macrohistory.net/database/"]
+topic_tags = ["Financial Crises", "Inflation", "GDP"]
+type_of_data_access = "Public"
+data_license = "No"
+license_expiration_date = "N/A"
+need_to_contact_provider = "No"
+provider_contact_info = ""
+restriction_on_use = "No"
+how_is_pulled = "Web API via Python"
+path_to_parquet_data = "./_data/macro_deflators.parquet"
+path_to_excel_data = ""
+date_col = "year"
+dataframe_docs_path = "./docs_src/dataframes/macro_deflators.md"
+
+
+[dataframes.crisis_panel]
+dataframe_name = "Crisis Chronology Panel"
+short_description_df = "One row per (country, year): the BVX baseline crisis indicator alongside the JST and Reinhart-Rogoff chronologies and BVX's crash, failure, and panic flags."
+data_sources = ["Baron-Verner-Xiong (2021)", "JST MacroHistory"]
+data_providers = ["Harvard Dataverse", "JST"]
+links_to_data_providers = ["https://dataverse.harvard.edu/", "https://www.macrohistory.net/database/"]
+topic_tags = ["Financial Crises", "Crisis Chronology"]
+type_of_data_access = "Public"
+data_license = "No"
+license_expiration_date = "N/A"
+need_to_contact_provider = "No"
+provider_contact_info = ""
+restriction_on_use = "No"
+how_is_pulled = "Web API via Python"
+path_to_parquet_data = "./_data/crisis_panel.parquet"
+path_to_excel_data = ""
+date_col = "year"
+dataframe_docs_path = "./docs_src/dataframes/crisis_panel.md"
+
+
+[dataframes.rzone_analysis_panel]
+dataframe_name = "R-Zone Analysis Panel"
+short_description_df = "One row per (country, year): spliced credit, equity, and house-price growth, R-zone indicators, and crisis outcomes."
+data_sources = ["Baron-Verner-Xiong (2021)", "IMF Global Debt Database", "BIS Total Credit Statistics", "IMF share price indices", "JST MacroHistory", "OECD share and house prices", "BIS Residential Property Prices", "World Bank WDI", "Ken French Data Library"]
+data_providers = ["Harvard Dataverse", "IMF", "BIS", "JST", "OECD", "World Bank", "Ken French Data Library"]
+links_to_data_providers = ["https://dataverse.harvard.edu/", "https://www.imf.org/en/Data", "https://data.bis.org/", "https://www.macrohistory.net/database/", "https://data-explorer.oecd.org/", "https://databank.worldbank.org/source/world-development-indicators", "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html"]
+topic_tags = ["Financial Crises", "Credit Growth", "Asset Prices"]
+type_of_data_access = "Public"
+data_license = "No"
+license_expiration_date = "N/A"
+need_to_contact_provider = "No"
+provider_contact_info = ""
+restriction_on_use = "No"
+how_is_pulled = "Web API via Python"
+path_to_parquet_data = "./_data/rzone_analysis_panel.parquet"
+path_to_excel_data = ""
+date_col = "year"
+dataframe_docs_path = "./docs_src/dataframes/rzone_analysis_panel.md"
 
 
 [charts]
-
-
-[charts.repo_rates]
-chart_name = "Repo Rates"
-short_description_chart = "SOFR, the Effective Funds Rate, and the Fed's Target Range"
-dataframe_id = "repo_public"
-topic_tags = ["Short Term Funding", "Repo"]
-data_series_start_date = "2/29/2012"
-data_frequency = "Daily"
-observation_period = "Weekday"
-lag_in_data_release = "One day"
-data_release_dates = "Weekday"
-seasonal_adjustment = "None"
-units = "Percent"
-data_series = ""
-mnemonic = ""
-path_to_html_chart = "./_output/repo_rates.html"
-path_to_excel_chart = "./src/repo_rates.xlsx"
-chart_docs_path = "./docs_src/charts/repo_rates.md"
-
+# The pipeline's exhibits are LaTeX tables and PDF/PNG figures built by doit;
+# there are no interactive HTML charts to register here.

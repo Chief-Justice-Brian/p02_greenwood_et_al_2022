@@ -119,6 +119,23 @@ The project uses the paper's data sources wherever possible:
 
 The paper's primary equity sources, GFD and Bloomberg, are paywalled. We therefore use the paper's stated fallback sources (IMF/IFS and JST) for the historical equity series and add OECD share prices for the forward extension.
 
+### Data Catalog
+
+`chartbook.toml` catalogs the pipeline's data products: the five panels (credit, equity, house prices, macro deflators, crisis chronologies) and the final analysis panel. Raw pulls are documented in each `pull_*.py` module docstring instead. Build and open the catalog site with:
+
+```bash
+chartbook build
+chartbook browse
+```
+
+After registering the pipeline in a local catalog (`chartbook catalog add .`), any cataloged panel loads programmatically:
+
+```python
+from chartbook import data
+
+panel = data.load(pipeline="P0", dataframe="rzone_analysis_panel", format="pandas")
+```
+
 ## Validation and Documentation
 
 Run the paper-benchmark validation gate with:

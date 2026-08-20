@@ -1,8 +1,9 @@
 # Project Overview
 
-## p02_greenwood_et_al_2022
+## Predictable Financial Crises
 
-Replication of Predictable Financial Crises FINM-32900
+Replication and post-publication extension of Greenwood, Hanson, Shleifer &
+Sørensen (2022), "Predictable Financial Crises," for FINM 32900.
 
 | Section | Description |
 |---------|-------------|
@@ -18,12 +19,3 @@ project_overview/goals
 project_overview/data_sources
 project_overview/methodology
 ```
-
-## To-Do
-
-- [ ] Define project goals and success criteria
-- [ ] Set up data pipeline and validate outputs
-- [ ] Explore and document datasets
-- [x] Build initial charts and notebooks
-- [ ] Write up findings
-- [x] Initialize project from template
