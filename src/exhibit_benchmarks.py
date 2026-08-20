@@ -7,50 +7,38 @@ on printed pages 52--55. Table 1 values live in :mod:`paper_benchmarks`.
 
 Tolerance policy
 ----------------
-Exact reproduction is not expected (the paper's GFD/Bloomberg equity series
-are proprietary and public databases have been revised); absolute tolerances
-in the units printed by the paper are:
-
-* Table 1: 0.75 percentage points for means, 2.5 for standard deviations,
-  and 15% for observation counts.
-* Table 3: 3 percentage points for cell shares and 14 percentage points for
-  cell crisis probabilities/differences.
-* Table 4: 8.25 percentage points for coefficients, 1.5 for t-statistics,
-  2.0 for within-R2, and 15% for N.
-* Figure 1: exact key BVX event years, plus count/rate tolerances for
-  R-Zone markers whose assignments depend on the substituted price series.
-* Figure 3: plot-derived peak and window benchmarks; percentages allow 8
-  points and peak years allow one year. These validate the numerical series,
-  not rendered pixels.
+The project derives validation tolerances from quantities printed in the
+paper, rather than from the reconstruction errors. Table 1 uses fractions of
+published standard deviations and quantile spans. Table 3 uses 95% Wilson
+half-widths implied by published cell shares and sample sizes. Table 4 uses
+standard errors inferred from published coefficients and t-statistics. Figure
+1 count tolerances are fractions of published counts, while Figure 3 allows
+three country classifications out of the paper's 42-country sample. Exact
+chronology and coverage checks retain zero tolerance.
 
 The rationale for each tolerance is documented in
 ``docs_src/project_overview/methodology.md``.
 """
 
-TABLE1_MEAN_TOLERANCE_PP = 0.75
-TABLE1_SD_TOLERANCE_PP = 2.50
+TABLE1_MEAN_SD_FRACTION = 0.10
+TABLE1_SD_FRACTION = 0.10
 TABLE1_N_TOLERANCE_FRACTION = 0.15
+TABLE1_QUANTILE_SPAN_FRACTION = 0.10
 
-TABLE3_DISTRIBUTION_TOLERANCE_PP = 3.0
-TABLE3_PROBABILITY_TOLERANCE_PP = 14.0
-TABLE3_DISTRIBUTION_RMSE_TOLERANCE_PP = 1.0
-TABLE3_PROBABILITY_RMSE_TOLERANCE_PP = 4.0
+NORMAL_95_Z = 1.96
+NORMALIZED_RMSE_TOLERANCE = 1.0
 
-TABLE4_COEFFICIENT_TOLERANCE_PP = 8.25
-TABLE4_TSTAT_TOLERANCE = 1.50
-TABLE4_R2_TOLERANCE_PP = 2.0
+TABLE4_COEFFICIENT_SE_MULTIPLIER = 1.50
+TABLE4_TSTAT_RELATIVE_TOLERANCE = 0.25
+TABLE4_TSTAT_ROUNDING_FLOOR = 0.10
+TABLE4_R2_RELATIVE_TOLERANCE = 0.25
+TABLE4_R2_ROUNDING_FLOOR_PP = 0.10
 TABLE4_N_TOLERANCE_FRACTION = 0.15
-TABLE4_COEFFICIENT_RMSE_TOLERANCE_PP = 4.0
-TABLE4_TSTAT_RMSE_TOLERANCE = 0.75
-TABLE4_R2_RMSE_TOLERANCE_PP = 1.0
 
-FIGURE1_RZONE_COUNT_TOLERANCE = 15
-FIGURE1_FOLLOWED_COUNT_TOLERANCE = 10
-FIGURE1_CRISIS_COUNT_TOLERANCE = 6
-FIGURE1_PRECEDED_COUNT_TOLERANCE = 6
-FIGURE1_PPV_TOLERANCE_PP = 10.0
+FIGURE1_COUNT_TOLERANCE_FRACTION = 0.15
 
-FIGURE3_SHARE_TOLERANCE_PP = 8.0
+FIGURE3_COUNTRY_MISMATCH_TOLERANCE = 3
+FIGURE3_SAMPLE_COUNTRIES = 42
 FIGURE3_PEAK_YEAR_TOLERANCE = 1
 
 

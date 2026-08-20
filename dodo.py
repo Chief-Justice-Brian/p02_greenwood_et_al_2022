@@ -293,7 +293,7 @@ def task_tidy():
 
 
 def task_analysis():
-    """Build the replication exhibits from the analysis panel"""
+    """Build the replication exhibits, extension, post publication, validation, and final report from the analysis panel"""
     yield {
         "name": "table1",
         "doc": "Table 1 summary statistics + divergence report vs the paper",

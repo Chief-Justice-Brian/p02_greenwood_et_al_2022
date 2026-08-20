@@ -42,7 +42,7 @@
 # 5. Distinguish the historical replication from the update through 2025.
 # 6. Locate the tables, figures, tests, and final report produced by the code.
 #
-# ## Game plan
+# ## Analysis roadmap
 #
 # We move in the same order as the pipeline:
 #
@@ -194,14 +194,18 @@ sample_summary = pd.DataFrame(
         {
             "sample": "Business estimation",
             "country_years": int(panel["in_business_sample"].sum()),
-            "countries": panel.loc[panel["in_business_sample"], "country_iso3"].nunique(),
+            "countries": panel.loc[
+                panel["in_business_sample"], "country_iso3"
+            ].nunique(),
             "first_year": panel.loc[panel["in_business_sample"], "year"].min(),
             "last_year": panel.loc[panel["in_business_sample"], "year"].max(),
         },
         {
             "sample": "Household estimation",
             "country_years": int(panel["in_household_sample"].sum()),
-            "countries": panel.loc[panel["in_household_sample"], "country_iso3"].nunique(),
+            "countries": panel.loc[
+                panel["in_household_sample"], "country_iso3"
+            ].nunique(),
             "first_year": panel.loc[panel["in_household_sample"], "year"].min(),
             "last_year": panel.loc[panel["in_household_sample"], "year"].max(),
         },
@@ -286,8 +290,7 @@ frozen_cutoffs.to_frame()
 # %%
 for sector in ["business", "household"]:
     expected = (
-        panel[f"high_{sector}_debt_growth"]
-        * panel[f"high_{sector}_price_growth"]
+        panel[f"high_{sector}_debt_growth"] * panel[f"high_{sector}_price_growth"]
     )
     classified = panel[f"rzone_{sector}"].notna()
     mismatches = (
@@ -370,9 +373,7 @@ coefficients = pd.read_csv(OUTPUT_DIR / "table4_baseline_coefficients.csv")
 models = pd.read_csv(OUTPUT_DIR / "table4_baseline_models.csv")
 
 full_h3 = coefficients.query("horizon == 3 and specification == 'full'")
-full_h3[
-    ["sector", "variable", "coefficient_pp", "std_error_pp", "t_stat", "p_value"]
-]
+full_h3[["sector", "variable", "coefficient_pp", "std_error_pp", "t_stat", "p_value"]]
 
 # %%
 models.query("horizon == 3")[
@@ -460,7 +461,7 @@ display(
 
 # %%
 fragility_correlations = pd.read_csv(OUTPUT_DIR / "fragility_correlations.csv")
-fragility_correlations
+display(fragility_correlations)
 
 # %% [markdown]
 # The 80th-percentile fragility cutoff is a convention-matching judgment call,
@@ -508,9 +509,11 @@ continuous_terms = continuous.loc[
     continuous["specification"].eq("continuous_extension")
     & continuous["variable"].str.contains("fragility_z")
 ].assign(
-    term=lambda frame: frame["variable"]
-    .str.startswith("rzone")
-    .map({True: "interaction", False: "level"})
+    term=lambda frame: (
+        frame["variable"]
+        .str.startswith("rzone")
+        .map({True: "interaction", False: "level"})
+    )
 )
 continuous_terms.pivot_table(
     index=["fragility_measure", "horizon"],
@@ -665,18 +668,33 @@ pd.Series(
 # ## Step 9. Check replication tolerances and locate the final artifacts
 #
 # Published values are stored separately from the estimators. The validation
-# report compares generated results with 586 transcribed benchmarks using
-# documented absolute tolerances.
+# report compares generated results with 586 transcribed benchmarks. Its
+# cell-specific tolerances are derived from published standard deviations,
+# quantile spans, cell sizes, coefficients, and t-statistics rather than from
+# the reconstruction errors.
 
 # %%
 validation = pd.read_csv(OUTPUT_DIR / "replication_validation.csv")
-validation.groupby("exhibit")["within_tolerance"].agg(
-    comparisons="size", passed="sum"
-).assign(pass_rate=lambda frame: frame["passed"] / frame["comparisons"])
+validation_summary = (
+    validation.groupby("exhibit")["within_tolerance"]
+    .agg(comparisons="size", passed="sum")
+    .assign(pass_rate_pct=lambda frame: 100 * frame["passed"] / frame["comparisons"])
+)
+display(validation_summary)
 
 # %%
 failed = validation.loc[~validation["within_tolerance"]]
 print(f"Benchmarks outside tolerance: {len(failed)}")
+display(failed.groupby(["exhibit", "statistic"]).size().to_frame("failures"))
+
+# %% [markdown]
+# The stricter paper-scaled audit passes 545 of 586 comparisons. Table 1 and
+# Figure 3 pass completely; Figure 1 passes 46 of 47 checks, Table 3 passes 264
+# of 273, and Table 4 passes 174 of 205. The misses are concentrated in nine
+# sparse crisis-probability cells and Table 4's t-statistics and within-$R^2$.
+# Thus the public-data reconstruction preserves the paper's descriptive scale
+# and broad predictive pattern, but it does not reproduce every inferential and
+# model-fit detail under the new policy.
 
 # %% [markdown]
 # ## Where to go next

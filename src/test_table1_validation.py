@@ -1,12 +1,13 @@
-"""Validation gate: recomputed Table 1 statistics must match the paper's
-published values within the tolerances in ``paper_benchmarks.py``."""
+"""Validate Table 1 using paper-scaled tolerances from the audit module."""
 
 from pathlib import Path
 
 import pytest
 
+import exhibit_benchmarks as exhibit
 import paper_benchmarks as bench
 from build_analysis_panel import analysis_panel_path, load_analysis_panel
+from replication_validation import table1_mean_tolerance, table1_quantile_tolerance
 from settings import config
 
 DATA_DIR = config("DATA_DIR")
@@ -62,7 +63,7 @@ def test_business_quantiles(business_debt_growth, quantile, published):
     # that decides which country-years enter the business R-zone.
     recomputed = business_debt_growth.quantile(quantile)
     assert recomputed == pytest.approx(
-        published, abs=bench.TOLERANCE_DEBT_CUTOFF_PP
+        published, abs=table1_quantile_tolerance("delta3_business_debt_gdp")
     ), f"business debt Q{int(quantile * 100)}: {recomputed:.2f} vs paper {published}"
 
 
@@ -75,7 +76,7 @@ def test_household_quantiles(household_debt_growth, quantile, published):
     # that decides which country-years enter the household R-zone.
     recomputed = household_debt_growth.quantile(quantile)
     assert recomputed == pytest.approx(
-        published, abs=bench.TOLERANCE_DEBT_CUTOFF_PP
+        published, abs=table1_quantile_tolerance("delta3_household_debt_gdp")
     ), f"household debt Q{int(quantile * 100)}: {recomputed:.2f} vs paper {published}"
 
 
@@ -88,7 +89,7 @@ def test_equity_terciles(equity_growth, quantile, published):
     # R-zone, and our IFS/JST equity splice is the likeliest divergence.
     recomputed = equity_growth.quantile(quantile)
     assert recomputed == pytest.approx(
-        published, abs=bench.TOLERANCE_PRICE_CUTOFF_PP
+        published, abs=table1_quantile_tolerance("delta3_log_real_equity")
     ), f"equity T{quantile * 100:.1f}: {recomputed:.2f} vs paper {published}"
 
 
@@ -101,7 +102,7 @@ def test_house_price_terciles(house_price_growth, quantile, published):
     # household R-zone.
     recomputed = house_price_growth.quantile(quantile)
     assert recomputed == pytest.approx(
-        published, abs=bench.TOLERANCE_PRICE_CUTOFF_PP
+        published, abs=table1_quantile_tolerance("delta3_log_real_house_price")
     ), f"house T{quantile * 100:.1f}: {recomputed:.2f} vs paper {published}"
 
 
@@ -109,7 +110,7 @@ def test_country_year_count(paper_sample):
     # The paper-sample country-year count must match the published N, so
     # we rebuilt the paper's sample rather than a similar-looking one.
     published = bench.SAMPLE_SIZES["bvx_crisis_indicator"]
-    allowed = published * bench.TOLERANCE_SAMPLE_SIZE_FRACTION
+    allowed = published * exhibit.TABLE1_N_TOLERANCE_FRACTION
     assert len(paper_sample) == pytest.approx(published, abs=allowed)
 
 
@@ -117,7 +118,7 @@ def test_business_pair_count(business_debt_growth):
     # The business debt+equity pair count must match the published N
     # within the allowed fraction.
     published = bench.SAMPLE_SIZES["business_pairs"]
-    allowed = published * bench.TOLERANCE_SAMPLE_SIZE_FRACTION
+    allowed = published * exhibit.TABLE1_N_TOLERANCE_FRACTION
     assert len(business_debt_growth) == pytest.approx(published, abs=allowed)
 
 
@@ -125,7 +126,7 @@ def test_household_pair_count(household_debt_growth):
     # The household debt+house pair count must match the published N
     # within the allowed fraction.
     published = bench.SAMPLE_SIZES["household_pairs"]
-    allowed = published * bench.TOLERANCE_SAMPLE_SIZE_FRACTION
+    allowed = published * exhibit.TABLE1_N_TOLERANCE_FRACTION
     assert len(household_debt_growth) == pytest.approx(published, abs=allowed)
 
 
@@ -142,7 +143,7 @@ def test_bvx_crisis_frequency(paper_sample):
     recomputed_pct = 100.0 * paper_sample["crisis_bvx"].mean()
     published_pct = bench.CRISIS_INDICATOR_MEANS["crisis_bvx"]
     assert recomputed_pct == pytest.approx(
-        published_pct, abs=bench.TOLERANCE_CRISIS_RATE_PP
+        published_pct, abs=table1_mean_tolerance("crisis_bvx")
     )
 
 
@@ -155,7 +156,7 @@ def test_crash_failure_panic_rates(paper_sample, column):
     recomputed_pct = 100.0 * paper_sample[column].mean()
     _, published_mean, _ = bench.TABLE1_PUBLISHED_ROWS[column]
     assert recomputed_pct == pytest.approx(
-        published_mean, abs=bench.TOLERANCE_INDICATOR_RATE_PP
+        published_mean, abs=table1_mean_tolerance(column)
     )
 
 
@@ -165,7 +166,7 @@ def test_real_gdp_growth_mean(paper_sample):
     recomputed = paper_sample["real_gdp_growth"].mean()
     _, published_mean, _ = bench.TABLE1_PUBLISHED_ROWS["real_gdp_growth"]
     assert recomputed == pytest.approx(
-        published_mean, abs=bench.TOLERANCE_GDP_GROWTH_PP
+        published_mean, abs=table1_mean_tolerance("real_gdp_growth")
     )
 
 
@@ -179,5 +180,5 @@ def test_private_debt_log_quantiles(paper_sample, quantile, published):
     values = paper_sample["delta3_log_real_private_debt"].dropna()
     recomputed = values.quantile(quantile)
     assert recomputed == pytest.approx(
-        published, abs=bench.TOLERANCE_PRIVATE_DEBT_QUANTILE_PP
+        published, abs=table1_quantile_tolerance("delta3_log_real_private_debt")
     )

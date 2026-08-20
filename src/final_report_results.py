@@ -62,12 +62,17 @@ def validation_summary() -> str:
         )
     total = len(validation)
     passed = int(validation["within_tolerance"].sum())
+    failed = total - passed
+    complete_exhibits = summary.loc[summary["sum"].eq(summary["count"]), "exhibit"]
+    complete_text = " and ".join(complete_exhibits.tolist())
     lines.extend(
         [
             r"\midrule",
             f"Total & {total} & {passed} & {100.0 * passed / total:.1f} \\\\ ",
             r"\bottomrule",
             r"\end{tabular}",
+            "",
+            rf"\par\smallskip\noindent The paper-scaled audit passes {passed} of {total} comparisons and flags {failed}. {complete_text} pass completely. The remaining misses identify where the public-data reconstruction does not recover the paper's cell-level probabilities, inferential statistics, or model fit within the paper-derived bounds; they are reported rather than used to widen the tolerances.",
         ]
     )
     return "\n".join(lines) + "\n"
@@ -157,9 +162,7 @@ def fragility_continuous_summary() -> str:
                 & coefficients["horizon"].eq(3)
                 & coefficients["specification"].eq("continuous_extension")
             ]
-            level = subset.loc[
-                subset["variable"].eq(f"{measure}_fragility_z")
-            ].iloc[0]
+            level = subset.loc[subset["variable"].eq(f"{measure}_fragility_z")].iloc[0]
             interaction = subset.loc[
                 subset["variable"].eq(f"rzone_{sector}_x_{measure}_fragility_z")
             ].iloc[0]
@@ -219,9 +222,7 @@ def fragility_form_checks_summary() -> str:
                 & coefficients["specification"].eq("level_and_change")
             ]
             level = race.loc[race["variable"].eq("noncore_fragility_z")].iloc[0]
-            change = race.loc[
-                race["variable"].eq("delta3_noncore_fragility_z")
-            ].iloc[0]
+            change = race.loc[race["variable"].eq("delta3_noncore_fragility_z")].iloc[0]
             quadratic = coefficients.loc[
                 coefficients["sector"].eq(sector)
                 & coefficients["horizon"].eq(horizon)
@@ -263,17 +264,14 @@ def rzone_exit_summary() -> str:
         zone = f"rzone_{sector}"
         for horizon in [1, 2, 3, 4]:
             subset = coefficients.loc[
-                coefficients["sector"].eq(sector)
-                & coefficients["horizon"].eq(horizon)
+                coefficients["sector"].eq(sector) & coefficients["horizon"].eq(horizon)
             ]
             pooled = subset.loc[
                 subset["sample"].eq("all_origins")
                 & subset["specification"].eq("recent_exit")
             ]
             in_zone = pooled.loc[pooled["variable"].eq(zone)].iloc[0]
-            recent = pooled.loc[
-                pooled["variable"].eq(f"{zone}_recent_exit")
-            ].iloc[0]
+            recent = pooled.loc[pooled["variable"].eq(f"{zone}_recent_exit")].iloc[0]
             by_year = subset.loc[
                 subset["sample"].eq("all_origins")
                 & subset["specification"].eq("exit_by_year")
@@ -327,12 +325,8 @@ def footnote10_verdict() -> str:
             subset = rzone_rows.loc[
                 rzone_rows["sector"].eq(sector) & rzone_rows["horizon"].eq(horizon)
             ]
-            static = subset.loc[
-                subset["specification"].eq("ghss_same_sample")
-            ].iloc[0]
-            dynamic = subset.loc[
-                subset["specification"].eq("autoregressive")
-            ].iloc[0]
+            static = subset.loc[subset["specification"].eq("ghss_same_sample")].iloc[0]
+            dynamic = subset.loc[subset["specification"].eq("autoregressive")].iloc[0]
             within_one_se = (
                 abs(dynamic["coefficient_pp"] - static["coefficient_pp"])
                 <= static["std_error_pp"]

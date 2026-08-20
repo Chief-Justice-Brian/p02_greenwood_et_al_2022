@@ -2,7 +2,7 @@
 
 Every number our replication is validated against lives here, transcribed from
 Table 1 (printed p. 39). ``test_table1_validation.py`` checks our recomputed
-panel against these within the tolerances below, and ``table1_summary_stats.py``
+panel against paper-derived tolerances, and ``table1_summary_stats.py``
 builds the side-by-side comparison table from them. Nothing else in the
 codebase should hard-code a number from the paper.
 
@@ -26,21 +26,8 @@ Published values:
 ``N_SAMPLE_COUNTRIES``
     The paper's country count; ``country_sample.py`` holds the names.
 
-Tolerances -- how far off each statistic is allowed to be:
-
-``TOLERANCE_DEBT_CUTOFF_PP``, ``TOLERANCE_PRICE_CUTOFF_PP``
-    The quantile cutoffs, the four R-zone gates among them.
-``TOLERANCE_SAMPLE_SIZE_FRACTION``
-    Country-year counts, as a fraction of the published N rather than an
-    absolute number of rows.
-``TOLERANCE_CRISIS_RATE_PP``
-    The unconditional BVX crisis rate.
-``TOLERANCE_INDICATOR_RATE_PP``
-    Bank equity crashes, bank failures and panics.
-``TOLERANCE_GDP_GROWTH_PP``
-    Mean real GDP growth.
-``TOLERANCE_PRIVATE_DEBT_QUANTILE_PP``
-    The total real debt quantiles.
+Tolerance formulas live in ``replication_validation.py`` and are derived from
+the published standard deviations and quantile spans stored here.
 """
 
 # Bottom panel of Table 1: quantiles of the predictor distributions,
@@ -101,21 +88,3 @@ TABLE1_PUBLISHED_ROWS = {
 PRIVATE_DEBT_LOG_QUANTILES = {0.20: 5.26, 0.40: 13.05, 0.60: 20.42, 0.80: 29.26}
 
 N_SAMPLE_COUNTRIES = 42
-
-# Tolerances for the validation gate. Rationale: our sources are revised
-# vintages of the paper's (IMF/BIS restate history), and the equity series
-# substitutes IFS+JST+OECD for the paywalled GFD, so exact matches are
-# impossible. The observed first-build divergences (see the git history of
-# this file) were at most 0.29pp on debt cutoffs and 0.35pp on price
-# cutoffs; the gates below leave modest headroom while still failing loudly
-# if a code change ever moves a cutoff materially.
-TOLERANCE_DEBT_CUTOFF_PP = 0.75
-TOLERANCE_PRICE_CUTOFF_PP = 1.50
-TOLERANCE_SAMPLE_SIZE_FRACTION = 0.10  # +/-10% on country-year counts
-
-# Table 1's remaining rows. The indicator rates and GDP growth are published in
-# percent, so these are absolute percentage-point gaps on the published mean.
-TOLERANCE_CRISIS_RATE_PP = 0.50
-TOLERANCE_INDICATOR_RATE_PP = 0.75
-TOLERANCE_GDP_GROWTH_PP = 0.50
-TOLERANCE_PRIVATE_DEBT_QUANTILE_PP = 2.00

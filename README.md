@@ -73,6 +73,10 @@ The pipeline produces:
 * `_output/replication_validation.csv`: published benchmarks, replicated values, tolerances, and pass/fail results.
 
 The historical replication and post-publication update are kept separate.
+The validation tolerances are derived from the paper's reported dispersion,
+cell sizes, standard errors, counts, and sample size. The current public-data
+reconstruction passes 545 of 586 comparisons; the report discusses the 41
+remaining differences instead of widening the bounds to force agreement.
 
 ## Post-Publication Update
 

@@ -246,9 +246,9 @@ mid-2000s, rather than being evenly distributed through time.}
 \centering
 \caption{\textbf{Numerical validation of the assigned historical exhibits.}
 The validation suite compares every transcribed paper benchmark with the
-recalculated value under a pre-documented absolute tolerance. All 586 checks
-pass. This means the reconstruction is acceptably close for the intended
-public-data replication; it does not mean every cell is numerically identical.}
+recalculated value under a project-defined, paper-scaled tolerance. The bounds
+use published dispersion, cell size, standard errors, counts, and sample size;
+the table reports rather than conceals comparisons outside those bounds.}
 \label{tab:validation}
 \input{../_output/report_validation_summary.tex}
 \end{table}
@@ -575,9 +575,12 @@ country-year key, documented source priorities, reproducible transformations,
 and automated validation. It closely recovers the paper's R-Zone frequencies,
 preserves the joint debt--price crisis gradient, and produces regression
 effects with the same broad economic interpretation. All 586 transcribed
-historical benchmarks pass their stated tolerances, and the full automated test
-suite verifies the main growth, threshold, outcome-window, sample, and updated
-coverage rules. The post-publication work recalculates rather than merely
+historical benchmarks are audited under paper-scaled tolerances: 545 pass and
+41 do not. Table 1 and Figure 3 pass completely, while the remaining misses are
+concentrated in sparse Table 3 cells and Table 4 inference and fit statistics.
+The automated suite verifies the main growth, threshold, outcome-window,
+sample, and updated-coverage rules and marks the known exhibit-level misses as
+expected failures. The post-publication work recalculates rather than merely
 relabels the tables and figures.
 
 \subsection*{Where the project faced challenges}
