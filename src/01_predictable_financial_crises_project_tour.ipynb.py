@@ -442,10 +442,10 @@ display(
 
 # %% [markdown]
 # The updated global series retains the major historical waves but shows low
-# recent R-Zone shares. Because the newer IMF chronology contains no confirmed
-# post-2016 systemic onset inside these 42 countries, the update adds evidence
-# about the prevalence of warning states but is not yet a powerful realized
-# out-of-sample crisis test.
+# recent R-Zone shares. Because the project's extension of the BVX criteria
+# identifies no confirmed post-2016 systemic onset inside these 42 countries,
+# the update adds evidence about the prevalence of warning states but is not
+# yet a powerful realized out-of-sample crisis test.
 
 # %% [markdown]
 # ## Step 8. See what the extensions add
