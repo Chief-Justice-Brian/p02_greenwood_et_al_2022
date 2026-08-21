@@ -14,7 +14,7 @@
 # ---
 
 # %% [markdown]
-# # Predictable Financial Crises: project tour
+# # Predictable Financial Crises: Project Tour
 #
 # ## Summary
 #
@@ -31,7 +31,7 @@
 # artifacts and reproduces a few central calculations interactively so a reader
 # can understand how the pieces fit together.
 #
-# ## Learning outcomes
+# ## Learning Outcomes
 #
 # By the end of the tour, you should be able to:
 #
@@ -42,7 +42,7 @@
 # 5. Distinguish the historical replication from the update through 2025.
 # 6. Locate the tables, figures, tests, and final report produced by the code.
 #
-# ## Analysis roadmap
+# ## Analysis Roadmap
 #
 # We move in the same order as the pipeline:
 #
@@ -70,7 +70,7 @@ pd.set_option("display.max_columns", 20)
 pd.set_option("display.float_format", "{:,.2f}".format)
 
 # %% [markdown]
-# ## Step 1. Load the cleaned analysis panel
+# ## Step 1. Load the Cleaned Analysis Panel
 #
 # The pipeline's main shareable dataset is a Parquet file keyed by ISO-3
 # country code and calendar year. Each row combines crisis outcomes, cleaned
@@ -120,7 +120,7 @@ tour_columns = [
 panel.loc[panel["country_iso3"].eq("USA"), tour_columns].tail(8)
 
 # %% [markdown]
-# ## Step 2. Inspect coverage and source splicing
+# ## Step 2. Inspect Coverage and Source Splicing
 #
 # A long international panel cannot be constructed from a single public source.
 # The cleaning code calculates each three-year change *within* a source and only
@@ -162,9 +162,9 @@ coverage[
 ]
 
 # %% [markdown]
-# Coverage rises substantially in the later period: a complete business pair
-# covers about 48% of the balanced historical panel and 94% of 2013–2025; the
-# corresponding household shares are about 46% and 97%. At the same time,
+# Coverage rises substantially in the later period: complete predictor pairs
+# cover roughly half of the balanced historical panel but nearly all of
+# 2013–2025 (the table above reports the exact shares). At the same time,
 # R-Zones become less frequent. This is why the update must report changing
 # sample counts rather than treating the panel as balanced.
 
@@ -172,7 +172,7 @@ coverage[
 display(Image(filename=OUTPUT_DIR / "data_overview_figure.png", width=900))
 
 # %% [markdown]
-# ## Step 3. Understand the historical forecasting sample
+# ## Step 3. Understand the Historical Forecasting Sample
 #
 # GHSS compare crisis probabilities over horizons from one to four years. To
 # keep the estimation sample identical across horizons, a forecast origin at
@@ -224,7 +224,7 @@ panel.loc[panel["in_paper_sample"], outcome_columns].isna().sum().rename(
 # missing future crisis year from being silently interpreted as “no crisis.”
 
 # %% [markdown]
-# ## Step 4. Reconstruct the core variables
+# ## Step 4. Reconstruct the Core Variables
 #
 # Debt growth is the three-year percentage-point change in debt/GDP. Real
 # asset-price growth is 100 times a three-year log change. The tidy scripts make
@@ -265,7 +265,7 @@ pd.Series(
 # their time arithmetic directly: a three-year change must be missing when the
 # same series is not available exactly three years earlier within its source.
 # More importantly for interpretation, the high-growth gates are pooled
-# historical thresholds—not country-specific percentiles.
+# historical thresholds, not country-specific percentiles.
 
 # %%
 cutoffs = calculate_cutoff_comparison(panel)
@@ -299,7 +299,7 @@ for sector in ["business", "household"]:
     print(f"{sector.title()} R-Zone assignment mismatches: {mismatches}")
 
 # %% [markdown]
-# ## Step 5. Reproduce the historical descriptive analysis
+# ## Step 5. Reproduce the Historical Descriptive Analysis
 #
 # Table 1 checks whether the reconstructed moments and thresholds resemble the
 # paper before any regressions are interpreted.
@@ -330,10 +330,11 @@ rzone_validation = pd.read_csv(OUTPUT_DIR / "rzone_validation.csv")
 display(rzone_validation)
 
 # %% [markdown]
-# The reconstructed R-Zone frequencies are close to the paper: 6.46% versus
-# 6.0% for business and 9.81% versus 10.3% for households. Three-year crisis
-# risk remains strongly elevated in the R-Zone, although the business frequency
-# is below the published value because some equity histories differ.
+# The reconstructed R-Zone frequencies land close to the paper's published
+# shares (6.0% business, 10.3% household; the replicated values are in the
+# table above). Three-year crisis risk remains strongly elevated in the
+# R-Zone, although the business frequency sits below the published value
+# because some equity histories differ.
 
 # %%
 table3 = pd.read_csv(OUTPUT_DIR / "table3_crisis_probabilities.csv")
@@ -361,7 +362,7 @@ display(Image(filename=OUTPUT_DIR / "figure1_event_history.png", width=900))
 # R-Zone.
 
 # %% [markdown]
-# ## Step 6. Read the fixed-effects regression output
+# ## Step 6. Read the Fixed-Effects Regression Output
 #
 # Table 4 estimates country-fixed-effects linear probability models. The full
 # specification includes high debt growth, high price growth, and their R-Zone
@@ -394,7 +395,7 @@ models.query("horizon == 3")[
 # R-Zone assignments depend on the substituted equity histories.
 
 # %% [markdown]
-# ## Step 7. Tour the post-publication update
+# ## Step 7. Tour the Post-Publication Update
 #
 # The update preserves the historical gates. It appends documented crisis
 # coverage through 2025 and creates a different valid final forecast origin for
@@ -403,6 +404,20 @@ models.query("horizon == 3")[
 
 # %%
 updated_panel = add_bvx_extended_crisis_series(panel, load_us_bank_equity(DATA_DIR))
+extension_outcomes = updated_panel.loc[
+    updated_panel["year"].gt(config("PAPER_SAMPLE_END_YEAR")), "crisis_bvx_extended"
+]
+print(f"Post-2016 country-years classified: {int(extension_outcomes.notna().sum()):,}")
+print(f"Post-2016 crisis onsets recorded: {int(extension_outcomes.fillna(0).sum())}")
+
+# %% [markdown]
+# The extended series applies BVX's own published criteria to new public
+# data, so "crisis" keeps one meaning across the 2016 seam. Under the broad
+# CRSP bank index the March 2023 US episode falls short of the 30% decline
+# bar, so no post-2016 onset is recorded; the candidate episodes and their
+# verdicts are documented in `_output/post_publication_crisis_screen.csv`.
+
+# %%
 updated_coverage = pd.read_csv(OUTPUT_DIR / "post_publication_data_coverage.csv")
 display(updated_coverage)
 
@@ -442,13 +457,13 @@ display(
 
 # %% [markdown]
 # The updated global series retains the major historical waves but shows low
-# recent R-Zone shares. Because the newer IMF chronology contains no confirmed
+# recent R-Zone shares. Because the extended BVX-criteria screen records no
 # post-2016 systemic onset inside these 42 countries, the update adds evidence
 # about the prevalence of warning states but is not yet a powerful realized
 # out-of-sample crisis test.
 
 # %% [markdown]
-# ## Step 8. See what the extensions add
+# ## Step 8. See What the Extensions Add
 #
 # The project also compares the GHSS model with bank-fragility and
 # autoregressive extensions. These are new analyses, not paper replications.
@@ -465,8 +480,8 @@ display(fragility_correlations)
 
 # %% [markdown]
 # The 80th-percentile fragility cutoff is a convention-matching judgment call,
-# so the proposal commits to sweeping it across candidate quantiles with q=80
-# frozen ex ante as the baseline. The sweep reports the R-Zone x high-noncore
+# so we sweep it across candidate quantiles with q=80 frozen ex ante as the
+# baseline. The sweep reports the R-Zone x high-noncore
 # interaction with its confidence band and, crucially, the joint cell count:
 # the number of country-years that are simultaneously in the R-Zone and above
 # the fragility cutoff, which is all the data the interaction is estimated
@@ -497,7 +512,7 @@ sweep.loc[
 # and the baseline is never revised toward the best-looking cutoff.
 #
 # The flag version bets everything on the few country-years that clear two
-# thresholds at once, so the proposal also commits to a continuous check: the
+# thresholds at once, so a precommitted continuous check follows: the
 # standardized level of each ratio (sign-flipped for lev, so bigger always
 # means more fragile) replaces the 0/1 flag in the same regression. The table
 # shows the fragility level and interaction coefficients, in percentage
@@ -582,8 +597,8 @@ dynamic_models.pivot_table(
 # out-of-sample forecast gain.
 #
 # The paper's footnote 10 claims, without a supporting table, that this
-# dynamic version gives "qualitatively similar results." Our proposal pinned
-# the phrase down before estimation: signs match, significance survives at
+# dynamic version gives "qualitatively similar results." We pinned the phrase
+# down before estimation: signs match, significance survives at
 # the same horizons, and the dynamic R-Zone coefficient sits within one
 # standard error of its static value. The check below applies the tightest
 # criterion cell by cell.
@@ -665,7 +680,7 @@ pd.Series(
 # complement rather than a replacement.
 
 # %% [markdown]
-# ## Step 9. Check replication tolerances and locate the final artifacts
+# ## Step 9. Check Replication Tolerances and Locate the Final Artifacts
 #
 # Published values are stored separately from the estimators. The validation
 # report compares generated results with 586 transcribed benchmarks. Its
@@ -697,7 +712,7 @@ display(failed.groupby(["exhibit", "statistic"]).size().to_frame("failures"))
 # model-fit detail under the new policy.
 
 # %% [markdown]
-# ## Where to go next
+# ## Where to Go Next
 #
 # The primary reader-facing outputs are:
 #

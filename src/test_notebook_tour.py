@@ -17,18 +17,18 @@ def test_notebook_source_has_hw_guide_structure_and_analysis_tour():
     source = SOURCE_PATH.read_text(encoding="utf-8")
     required_sections = [
         "## Summary",
-        "## Learning outcomes",
-        "## Analysis roadmap",
-        "## Step 1. Load the cleaned analysis panel",
-        "## Step 2. Inspect coverage and source splicing",
-        "## Step 3. Understand the historical forecasting sample",
-        "## Step 4. Reconstruct the core variables",
-        "## Step 5. Reproduce the historical descriptive analysis",
-        "## Step 6. Read the fixed-effects regression output",
-        "## Step 7. Tour the post-publication update",
-        "## Step 8. See what the extensions add",
-        "## Step 9. Check replication tolerances",
-        "## Where to go next",
+        "## Learning Outcomes",
+        "## Analysis Roadmap",
+        "## Step 1. Load the Cleaned Analysis Panel",
+        "## Step 2. Inspect Coverage and Source Splicing",
+        "## Step 3. Understand the Historical Forecasting Sample",
+        "## Step 4. Reconstruct the Core Variables",
+        "## Step 5. Reproduce the Historical Descriptive Analysis",
+        "## Step 6. Read the Fixed-Effects Regression Output",
+        "## Step 7. Tour the Post-Publication Update",
+        "## Step 8. See What the Extensions Add",
+        "## Step 9. Check Replication Tolerances",
+        "## Where to Go Next",
     ]
     for section in required_sections:
         assert section in source
@@ -53,5 +53,5 @@ def test_rendered_notebook_is_executed_without_cell_errors():
     ]
     assert errors == []
     html = HTML_PATH.read_text(encoding="utf-8")
-    assert "Learning outcomes" in html
+    assert "Learning Outcomes" in html
     assert "Benchmarks outside tolerance: 41" in html

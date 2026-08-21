@@ -522,10 +522,11 @@ def crisis_screen(panel: pd.DataFrame) -> pd.DataFrame:
         )
     else:
         usa_basis = (
-            f"CRSP value-weighted bank index fell {drawdown_pct:.1f}% from its "
-            "trailing peak, short of the 30% bar: the crash concentrated in "
-            "regional banks while the largest institutions rallied. The "
-            "failure and run evidence keeps the episode borderline"
+            f"The CRSP value-weighted bank index fell {drawdown_pct:.1f}% from "
+            "its trailing peak, below the 30% threshold. The decline was "
+            "concentrated in regional banks while the largest institutions "
+            "rallied. The failure and bank-run evidence nevertheless makes "
+            "the episode borderline."
         )
     rows = [
         {
@@ -539,15 +540,17 @@ def crisis_screen(panel: pd.DataFrame) -> pd.DataFrame:
             "year": 2023,
             "verdict": "No onset",
             "basis": (
-                "Single institution (Credit Suisse); the aggregate Swiss bank "
-                "index never approached a 30% decline"
+                "The episode centered on a single institution, Credit Suisse; "
+                "the aggregate Swiss bank index never approached a 30% decline."
             ),
         },
         {
             "episode": "Russia",
             "year": 2022,
             "verdict": "Excluded (war)",
-            "basis": "War-driven episode; BVX's own exclude-war convention applies",
+            "basis": (
+                "War-driven episode; BVX's exclusion of war-related crises applies."
+            ),
         },
     ]
     return pd.DataFrame(rows)
@@ -584,13 +587,17 @@ def main() -> None:
 
     table1, table1_quantiles = updated_table1(panel)
     table1.to_csv(OUTPUT_DIR / "table1_post_publication_stats.csv", index=False)
-    table1_quantiles.to_csv(OUTPUT_DIR / "table1_post_publication_quantiles.csv", index=False)
+    table1_quantiles.to_csv(
+        OUTPUT_DIR / "table1_post_publication_quantiles.csv", index=False
+    )
     (OUTPUT_DIR / "table1_post_publication.tex").write_text(
         _table1_latex(table1, table1_quantiles), encoding="utf-8"
     )
 
     table3 = updated_table3(panel)
-    table3.to_csv(OUTPUT_DIR / "table3_post_publication_crisis_probabilities.csv", index=False)
+    table3.to_csv(
+        OUTPUT_DIR / "table3_post_publication_crisis_probabilities.csv", index=False
+    )
     (OUTPUT_DIR / "table3_post_publication.tex").write_text(
         build_table3_latex(table3), encoding="utf-8"
     )

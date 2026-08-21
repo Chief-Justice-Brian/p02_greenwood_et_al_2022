@@ -418,7 +418,7 @@ def missed_crises() -> str:
     data = data.loc[data["missed_by_rzone"]].copy()
     lines = [
         r"\begin{longtable}{lrrrr}",
-        r"\caption{\textbf{Missed crises and prior bank-fragility percentiles.} The table lists every crisis not preceded by either sector's R-Zone and the maximum bank-fragility percentile during the prior three years. Values above 80 indicate unusually fragile banking conditions. The mixed pattern shows why fragility is a diagnostic complement rather than a complete replacement for the borrower-side signal; dashes indicate unavailable JST banking data.}\label{tab:missed-crises} \\",
+        r"\caption{\textbf{Missed crises and prior bank-fragility percentiles.} The table lists every crisis not preceded by either sector's R-Zone and reports the highest bank-fragility percentile observed during the prior three years. Values above 80 indicate unusually fragile banking conditions; dashes indicate unavailable JST banking data. The mixed pattern shows why fragility complements rather than replaces the borrower-side signal.}\label{tab:missed-crises} \\",
         r"\toprule",
         r"Country & Crisis year & Noncore pct. & Loans/deposits pct. & Leverage pct. \\",
         r"\midrule",
