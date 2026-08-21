@@ -43,5 +43,5 @@ dependencies:
 
   - pip
   - pip:
-      - chartbook[all]==0.0.2
+      - chartbook[all]
 
